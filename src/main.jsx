@@ -76,7 +76,7 @@ function App() {
     if (!supabase || !session) return;
 
     Promise.all([
-      supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+      getOrCreateProfile(),
       supabase.from('channels').select('*').order('created_at'),
       supabase.from('emojis').select('*').order('name'),
     ]).then(([profileResult, channelResult, emojiResult]) => {
@@ -137,6 +137,18 @@ function App() {
     const { data, error } = await supabase.from('channels').select('*').order('created_at');
     if (error) setStatus(error.message);
     else setChannels(data);
+  }
+
+  async function getOrCreateProfile() {
+    const existing = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    if (existing.data || existing.error) return existing;
+
+    const fallbackName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'hackclubber';
+    return supabase
+      .from('profiles')
+      .upsert({ id: session.user.id, email: session.user.email, display_name: fallbackName, approved: true })
+      .select('*')
+      .single();
   }
 
   async function reloadEmojis() {

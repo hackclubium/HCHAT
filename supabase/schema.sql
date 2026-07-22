@@ -267,6 +267,7 @@ alter table public.audit_logs enable row level security;
 alter table public.emojis enable row level security;
 
 create policy "read profiles" on public.profiles for select to authenticated using (public.is_approved() or id = auth.uid());
+create policy "create own profile" on public.profiles for insert to authenticated with check (id = auth.uid());
 create policy "update own profile" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
 create policy "read channels" on public.channels for select to authenticated using (public.can_access_channel(id) and (not archived or public.is_staff()));
@@ -335,7 +336,7 @@ create policy "read attachments" on storage.objects for select to authenticated 
 create policy "upload attachments" on storage.objects for insert to authenticated with check (bucket_id = 'attachments' and public.can_post());
 
 grant select on public.profiles, public.channels, public.channel_members, public.messages, public.message_edits, public.reactions, public.moderation, public.dm_conversations, public.dm_members, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
-grant insert on public.channels, public.channel_members, public.messages, public.reactions, public.moderation, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
+grant insert on public.profiles, public.channels, public.channel_members, public.messages, public.reactions, public.moderation, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
 grant update on public.channels, public.messages, public.moderation, public.read_receipts to authenticated;
 grant delete on public.channels, public.channel_members, public.messages, public.reactions, public.dm_messages, public.emojis to authenticated;
 grant execute on function public.create_dm(uuid), public.edit_message(uuid, text) to authenticated;
