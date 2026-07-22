@@ -546,11 +546,13 @@ function App() {
           {dmId && dmMessages.map((item) => (
             <article className="message-row" key={item.id}>
               <div className="avatar">{initials(item.profiles?.display_name)}</div>
-              <div className="meta">
-                <strong>{item.profiles?.display_name || 'unknown'}</strong>
-                <small>{new Date(item.created_at).toLocaleString()}</small>
+              <div className="message-content">
+                <div className="meta">
+                  <strong>{item.profiles?.display_name || 'unknown'}</strong>
+                  <small>{new Date(item.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</small>
+                </div>
+                <p>{renderMessage(item.body, emojis)}</p>
               </div>
-              <p>{renderMessage(item.body, emojis)}</p>
             </article>
           ))}
           {!dmId && threadParent && (
@@ -559,14 +561,18 @@ function App() {
               <h2>Thread</h2>
               <article className="message-row">
                 <div className="avatar">{initials(threadParent.profiles?.display_name)}</div>
-                <strong>{threadParent.profiles?.display_name}</strong>
-                <p>{renderMessage(threadParent.body, emojis)}</p>
+                <div className="message-content">
+                  <div className="meta"><strong>{threadParent.profiles?.display_name}</strong></div>
+                  <p>{renderMessage(threadParent.body, emojis)}</p>
+                </div>
               </article>
               {(threadParent.replies || []).map((reply) => (
                 <article className="message-row" key={reply.id}>
                   <div className="avatar">{initials(reply.profiles?.display_name)}</div>
-                  <strong>{reply.profiles?.display_name || 'unknown'}</strong>
-                  <p>{renderMessage(reply.body, emojis)}</p>
+                  <div className="message-content">
+                    <div className="meta"><strong>{reply.profiles?.display_name || 'unknown'}</strong></div>
+                    <p>{renderMessage(reply.body, emojis)}</p>
+                  </div>
                 </article>
               ))}
               <form className="composer inline" onSubmit={sendThreadMessage}>
@@ -579,29 +585,33 @@ function App() {
           {!dmId && !threadParent && messages.map((item) => (
             <article className="message-row" key={item.id}>
               <div className="avatar">{initials(item.profiles?.display_name)}</div>
-              <div className="meta">
-                <strong>{item.profiles?.display_name || 'unknown'}</strong>
-                {item.pinned && <span className="pill">pinned</span>}
-                <small>{new Date(item.created_at).toLocaleString()}</small>
-                {isStaff && <button className="link" onClick={() => togglePin(item)}>{item.pinned ? 'unpin' : 'pin'}</button>}
-                <button className="link" onClick={() => loadThread(item)}>thread</button>
-                {item.edited_at && <span className="pill">edited</span>}
-                {item.user_id === session.user.id && <button className="link" onClick={() => { setEditingId(item.id); setEditingBody(item.body); }}>edit</button>}
-                {(item.user_id === session.user.id || isStaff) && <button className="link" onClick={() => deleteMessage(item.id)}>delete</button>}
-              </div>
-              {editingId === item.id ? (
-                <form className="inline" onSubmit={saveEdit}>
-                  <input value={editingBody} onChange={(event) => setEditingBody(event.target.value)} maxLength="2000" />
-                  <button>Save</button>
-                  <button type="button" onClick={() => setEditingId(null)}>Cancel</button>
-                </form>
-              ) : <p>{renderMessage(item.body, emojis)}</p>}
-              {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
-              <div className="reactions">
-                {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
-                  <button onClick={() => react(item, name)} key={name}>:{name}: {count}</button>
-                ))}
-                {emojis.slice(0, 6).map((emoji) => <button onClick={() => react(item, emoji.name)} key={emoji.id}>:{emoji.name}:</button>)}
+              <div className="message-content">
+                <div className="meta">
+                  <strong>{item.profiles?.display_name || 'unknown'}</strong>
+                  <small>{new Date(item.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</small>
+                  {item.pinned && <span className="pill">pinned</span>}
+                  {item.edited_at && <span className="pill">edited</span>}
+                </div>
+                <div className="message-actions">
+                  {isStaff && <button className="link" onClick={() => togglePin(item)}>{item.pinned ? 'unpin' : 'pin'}</button>}
+                  <button className="link" onClick={() => loadThread(item)}>thread</button>
+                  {item.user_id === session.user.id && <button className="link" onClick={() => { setEditingId(item.id); setEditingBody(item.body); }}>edit</button>}
+                  {(item.user_id === session.user.id || isStaff) && <button className="link danger-link" onClick={() => deleteMessage(item.id)}>delete</button>}
+                </div>
+                {editingId === item.id ? (
+                  <form className="inline edit-box" onSubmit={saveEdit}>
+                    <input value={editingBody} onChange={(event) => setEditingBody(event.target.value)} maxLength="2000" />
+                    <button>Save</button>
+                    <button type="button" onClick={() => setEditingId(null)}>Cancel</button>
+                  </form>
+                ) : <p>{renderMessage(item.body, emojis)}</p>}
+                {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
+                <div className="reactions">
+                  {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
+                    <button onClick={() => react(item, name)} key={name}>:{name}: {count}</button>
+                  ))}
+                  {emojis.slice(0, 6).map((emoji) => <button onClick={() => react(item, emoji.name)} key={emoji.id}>:{emoji.name}:</button>)}
+                </div>
               </div>
             </article>
           ))}

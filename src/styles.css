@@ -259,30 +259,55 @@ header span { max-width: 45%; overflow: hidden; color: var(--muted); font-size: 
 
 .messages article {
   position: relative;
-  margin: 0;
-  padding: 7px 20px 7px 76px;
-  min-height: 42px;
-}
-.messages article:hover { background: #f8f8f8; }
-.avatar {
-  position: absolute;
-  left: 20px;
-  top: 9px;
   display: grid;
-  width: 36px;
-  height: 36px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  margin: 0;
+  padding: 8px 22px;
+  min-height: 52px;
+}
+.messages article:hover { background: #f7f7f7; }
+.avatar {
+  position: static;
+  display: grid;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 9px;
   color: #fff;
   background: linear-gradient(135deg, #611f69, #1264a3);
   font-size: 0.8rem;
   font-weight: 900;
+  box-shadow: inset 0 -10px 20px #00000017;
 }
+.message-content { min-width: 0; position: relative; }
 .meta { display: flex; align-items: baseline; gap: 8px; min-height: 19px; }
 .meta strong { font-size: 0.94rem; font-weight: 900; }
 .meta small { color: var(--muted); font-size: 0.75rem; }
 .pill { border-radius: 999px; padding: 1px 6px; color: var(--muted); background: #ececec; font-size: 0.7rem; }
 .messages article p { margin: 1px 0 0; line-height: 1.43; white-space: pre-wrap; word-break: break-word; }
+.message-actions {
+  position: absolute;
+  top: -24px;
+  right: 4px;
+  display: none;
+  gap: 2px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 3px;
+  background: #fff;
+  box-shadow: 0 3px 12px #00000014;
+  z-index: 2;
+}
+.message-row:hover .message-actions { display: flex; }
+.message-actions .link {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #454245;
+  font-size: 0.75rem;
+}
+.message-actions .link:hover { background: #f0f0f0; }
+.danger-link { color: var(--danger) !important; }
 .emoji { width: 1.35em; height: 1.35em; vertical-align: -0.25em; object-fit: contain; }
 .attachment { display: inline-block; margin-top: 7px; color: var(--blue); font-weight: 700; }
 .link { padding: 0; color: var(--blue); background: transparent; font-size: 0.78rem; font-weight: 800; }
@@ -324,6 +349,7 @@ header span { max-width: 45%; overflow: hidden; color: var(--muted); font-size: 
 .thread h2 { margin: 10px 20px; font-size: 1rem; }
 .thread article { background: transparent; }
 .inline { display: flex; gap: 8px; border: 0; padding: 10px 12px 14px; }
+.edit-box { padding: 8px 0 4px; }
 .inline input { border: 1px solid #b8b4bb; }
 
 .rightbar {
@@ -413,7 +439,7 @@ header span { max-width: 45%; overflow: hidden; color: var(--muted); font-size: 
   .app { grid-template-columns: 1fr; min-height: 100vh; }
   .leftbar { max-height: none; overflow: visible; }
   .chat { min-height: 70vh; }
-  article { padding-left: 62px; }
-  .avatar { left: 14px; }
+  .messages article { grid-template-columns: 34px minmax(0, 1fr); padding: 8px 14px; }
+  .avatar { width: 34px; height: 34px; border-radius: 8px; }
   .composer { grid-template-columns: 1fr; }
 }
