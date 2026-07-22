@@ -24,6 +24,10 @@ function renderMessage(body, emojis) {
   return parts;
 }
 
+function initials(name = '?') {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -458,7 +462,13 @@ function App() {
   }
 
   return (
-    <main className="app">
+    <main className="app-shell">
+      <div className="topbar">
+        <div className="traffic"><span></span><span></span><span></span></div>
+        <label className="global-search">Search HCHAT</label>
+        <button onClick={() => supabase.auth.signOut()}>Sign out</button>
+      </div>
+      <section className="app">
       <aside className="leftbar">
         <h1>HCHAT <span className="chev">v</span></h1>
         <form className="profile" onSubmit={saveProfile}>
@@ -517,7 +527,8 @@ function App() {
         <div className="messages">
           {dmId && dmMessages.length === 0 && <div className="empty">No messages here yet. Say hi.</div>}
           {dmId && dmMessages.map((item) => (
-            <article key={item.id}>
+            <article className="message-row" key={item.id}>
+              <div className="avatar">{initials(item.profiles?.display_name)}</div>
               <div className="meta">
                 <strong>{item.profiles?.display_name || 'unknown'}</strong>
                 <small>{new Date(item.created_at).toLocaleString()}</small>
@@ -529,12 +540,14 @@ function App() {
             <section className="thread">
               <button className="link" onClick={() => setThreadParent(null)}>close thread</button>
               <h2>Thread</h2>
-              <article>
+              <article className="message-row">
+                <div className="avatar">{initials(threadParent.profiles?.display_name)}</div>
                 <strong>{threadParent.profiles?.display_name}</strong>
                 <p>{renderMessage(threadParent.body, emojis)}</p>
               </article>
               {(threadParent.replies || []).map((reply) => (
-                <article key={reply.id}>
+                <article className="message-row" key={reply.id}>
+                  <div className="avatar">{initials(reply.profiles?.display_name)}</div>
                   <strong>{reply.profiles?.display_name || 'unknown'}</strong>
                   <p>{renderMessage(reply.body, emojis)}</p>
                 </article>
@@ -547,7 +560,8 @@ function App() {
           )}
           {!dmId && !threadParent && messages.length === 0 && <div className="empty">This channel is brand new. First post gets bragging rights.</div>}
           {!dmId && !threadParent && messages.map((item) => (
-            <article key={item.id}>
+            <article className="message-row" key={item.id}>
+              <div className="avatar">{initials(item.profiles?.display_name)}</div>
               <div className="meta">
                 <strong>{item.profiles?.display_name || 'unknown'}</strong>
                 {item.pinned && <span className="pill">pinned</span>}
@@ -667,6 +681,7 @@ function App() {
           </>
         )}
       </aside>
+      </section>
     </main>
   );
 }
