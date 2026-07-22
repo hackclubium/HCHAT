@@ -35,3 +35,5 @@ on conflict do nothing;
 drop policy if exists "create own profile" on public.profiles;
 create policy "create own profile" on public.profiles for insert to authenticated with check (id = auth.uid());
 grant insert on public.profiles to authenticated;
+revoke update on public.profiles from authenticated;
+grant update (display_name) on public.profiles to authenticated;
