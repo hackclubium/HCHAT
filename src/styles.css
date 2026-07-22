@@ -87,7 +87,7 @@ button {
 
 .topbar {
   display: grid;
-  grid-template-columns: 150px minmax(160px, 640px) 150px;
+  grid-template-columns: 220px minmax(220px, 720px) 220px;
   align-items: center;
   justify-content: center;
   gap: 14px;
@@ -96,30 +96,43 @@ button {
   background: var(--aubergine-2);
   box-shadow: inset 0 -1px #00000040;
 }
-.topbar button {
-  justify-self: end;
-  padding: 5px 10px;
-  color: #efe6f0;
-  border: 1px solid #ffffff24;
-  background: #ffffff12;
-}
-.traffic { display: flex; gap: 7px; }
-.traffic span {
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-  background: #ffffff40;
-}
+.workspace-pill { color: #f6edf7; font-weight: 900; }
 .global-search {
+  display: block;
   justify-self: center;
   width: min(100%, 620px);
   border: 1px solid #ffffff25;
   border-radius: 7px;
-  padding: 5px 14px;
-  color: #f6edf7cc;
   background: #ffffff18;
-  font-size: 0.86rem;
+}
+.global-search input {
+  border: 0;
+  padding: 5px 14px;
+  color: #f6edf7;
+  background: transparent;
   text-align: center;
+}
+.global-search input::placeholder { color: #f6edf7cc; }
+.global-search input:focus { outline: 0; }
+.account-chip {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #f6edf7;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+.account-chip span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #36c5f0, #2eb67d);
+  color: #fff;
+  font-size: 0.72rem;
 }
 
 .app {
@@ -168,6 +181,10 @@ button {
 nav { display: grid; gap: 1px; padding: 0 8px; }
 .channel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px; }
 .leftbar button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   overflow: hidden;
   width: 100%;
   color: #e8d7eb;
@@ -176,6 +193,16 @@ nav { display: grid; gap: 1px; padding: 0 8px; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 650;
+}
+.leftbar button span { overflow: hidden; text-overflow: ellipsis; }
+.leftbar button b {
+  min-width: 20px;
+  border-radius: 999px;
+  padding: 1px 6px;
+  color: var(--aubergine);
+  background: #fff;
+  font-size: 0.72rem;
+  text-align: center;
 }
 .leftbar button:hover { background: #ffffff18; }
 .leftbar button.active { color: #fff; background: var(--blue); }
@@ -314,6 +341,15 @@ header span { max-width: 45%; overflow: hidden; color: var(--muted); font-size: 
   text-transform: uppercase;
 }
 .rightbar .stack { margin: 8px 4px 14px; }
+.panel-card {
+  margin: 0 4px 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+.panel-card strong { display: block; margin-bottom: 4px; }
+.panel-card p { margin: 0; color: var(--muted); font-size: 0.88rem; }
 
 .emoji-grid {
   display: grid;
@@ -373,7 +409,7 @@ header span { max-width: 45%; overflow: hidden; color: var(--muted); font-size: 
   body { overflow: auto; }
   .app-shell { height: auto; min-height: 100vh; }
   .topbar { grid-template-columns: 1fr; height: auto; padding: 8px; }
-  .traffic, .topbar button { display: none; }
+  .workspace-pill, .account-chip { display: none; }
   .app { grid-template-columns: 1fr; min-height: 100vh; }
   .leftbar { max-height: none; overflow: visible; }
   .chat { min-height: 70vh; }

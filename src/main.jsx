@@ -464,9 +464,11 @@ function App() {
   return (
     <main className="app-shell">
       <div className="topbar">
-        <div className="traffic"><span></span><span></span><span></span></div>
-        <label className="global-search">Search HCHAT</label>
-        <button onClick={() => supabase.auth.signOut()}>Sign out</button>
+        <div className="workspace-pill">HCHAT</div>
+        <form className="global-search" onSubmit={runSearch}>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search messages" />
+        </form>
+        <div className="account-chip"><span>{initials(profile?.display_name)}</span>{profile?.display_name}</div>
       </div>
       <section className="app">
       <aside className="leftbar">
@@ -481,7 +483,10 @@ function App() {
         <nav>
           {channels.map((channel) => (
             <div className="channel-row" key={channel.id}>
-              <button className={channel.id === channelId && !dmId ? 'active' : ''} onClick={() => { setChannelId(channel.id); setDmId(null); }}># {channel.name}{channel.private ? ' private' : ''}{unread[channel.id] ? ` (${unread[channel.id]})` : ''}</button>
+              <button className={channel.id === channelId && !dmId ? 'active' : ''} onClick={() => { setChannelId(channel.id); setDmId(null); }}>
+                <span># {channel.name}{channel.private ? ' private' : ''}</span>
+                {unread[channel.id] ? <b>{unread[channel.id]}</b> : null}
+              </button>
               {isStaff && <button className="danger small" onClick={() => deleteChannel(channel.id)} title="Delete channel">x</button>}
             </div>
           ))}
@@ -491,7 +496,7 @@ function App() {
         <nav>
           {dms.map((dm) => (
             <button className={dm.id === dmId ? 'active' : ''} onClick={() => setDmId(dm.id)} key={dm.id}>
-              <span className="dot"></span> {dm.dm_members?.map((member) => member.profiles?.display_name).filter(Boolean).join(', ')}
+              <span><span className="dot"></span> {dm.dm_members?.map((member) => member.profiles?.display_name).filter(Boolean).join(', ')}</span>
             </button>
           ))}
         </nav>
@@ -598,6 +603,11 @@ function App() {
       </section>
 
       <aside className="rightbar">
+        <h2>About</h2>
+        <div className="panel-card">
+          <strong>{dmId ? 'Direct message' : `# ${currentChannel?.name || 'channel'}`}</strong>
+          <p>{dmId ? 'Private conversation' : currentChannel?.topic || 'No topic yet'}</p>
+        </div>
         <h2>Find stuff</h2>
         <form className="stack" onSubmit={runSearch}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="find messages" />
