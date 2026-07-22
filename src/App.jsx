@@ -46,14 +46,14 @@ function Login({ status, onSignIn }) {
   );
 }
 
-function TopBar({ profile, search, setSearch, onSearch, onSignOut }) {
+function TopBar({ profile, search, setSearch, onSearch, onAccount }) {
   return (
     <header className="topbar">
       <strong>HCHAT</strong>
       <form onSubmit={onSearch}>
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search messages" />
       </form>
-      <button className="account" onClick={onSignOut}><span>{initials(profile?.display_name)}</span>{profile?.display_name || 'You'}</button>
+      <button className="account" onClick={onAccount}><span>{initials(profile?.display_name)}</span>{profile?.display_name || 'You'}</button>
     </header>
   );
 }
@@ -172,12 +172,13 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, channel }) {
 }
 
 function Drawer(props) {
-  const { mode, close, currentChannel, dmId, search, setSearch, runSearch, searchResults, setChannelId, emojis, setMessage, uploadEmoji, emojiName, setEmojiName, setEmojiFile, deleteEmoji, isStaff, users, startDm, setModeration, channelMembers, toggleChannelMember, auditLogs, createChannel, newChannel, setNewChannel, newTopic, setNewTopic, newPrivate, setNewPrivate, saveTopic, topic, setTopic, session } = props;
+  const { mode, close, currentChannel, dmId, search, setSearch, runSearch, searchResults, setChannelId, emojis, setMessage, uploadEmoji, emojiName, setEmojiName, setEmojiFile, deleteEmoji, isStaff, users, startDm, setModeration, channelMembers, toggleChannelMember, auditLogs, createChannel, newChannel, setNewChannel, newTopic, setNewTopic, newPrivate, setNewPrivate, saveTopic, topic, setTopic, session, profile, profileName, setProfileName, saveProfile, signOut } = props;
   if (!mode) return null;
   return (
     <aside className="drawer">
       <header><strong>{mode === 'details' ? 'Channel details' : mode[0].toUpperCase() + mode.slice(1)}</strong><button onClick={close}>Close</button></header>
       {mode === 'details' && <div className="card"><h3>{dmId ? 'Direct message' : `# ${currentChannel?.name || 'channel'}`}</h3><p>{dmId ? 'Private conversation' : currentChannel?.topic || 'No topic yet'}</p></div>}
+      {mode === 'profile' && <><div className="profile-card"><span>{initials(profile?.display_name)}</span><strong>{profile?.display_name}</strong><small>{profile?.email || 'Hack Club Auth'}</small></div><form className="stack" onSubmit={saveProfile}><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Display name" maxLength="40" /><button>Save name</button></form><button className="signout" onClick={signOut}>Sign out</button></>}
       {mode === 'search' && <><form className="stack" onSubmit={runSearch}><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="find messages" /><button>Search</button></form><div className="result-list">{searchResults.map((item) => <button onClick={() => setChannelId(item.channel_id)} key={item.id}><small>#{item.channels?.name} - {item.profiles?.display_name}</small><span>{item.body}</span></button>)}</div></>}
       {mode === 'emoji' && <><div className="emoji-grid">{emojis.map((emoji) => <button onClick={() => setMessage((current) => `${current} :${emoji.name}:`.trimStart())} key={emoji.id}><img src={emoji.image_url} alt={`:${emoji.name}:`} />{(emoji.created_by === session.user.id || isStaff) && <span onClick={(event) => { event.stopPropagation(); deleteEmoji(emoji); }}>x</span>}</button>)}</div><form className="stack" onSubmit={uploadEmoji}><input value={emojiName} onChange={(event) => setEmojiName(event.target.value)} placeholder="party_blob" /><input type="file" accept="image/png,image/webp,image/gif" onChange={(event) => setEmojiFile(event.target.files[0])} /><button>Upload emoji</button></form></>}
       {mode === 'people' && <div className="people-list">{users.map((user) => <article key={user.id}><strong><i></i>{user.display_name}</strong><small>{user.email ? `${user.email} - ` : ''}{user.role}</small><button onClick={() => startDm(user)}>DM</button></article>)}</div>}
@@ -189,6 +190,7 @@ function Drawer(props) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [profileName, setProfileName] = useState('');
   const [channels, setChannels] = useState([]);
   const [channelId, setChannelId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -233,6 +235,7 @@ export default function App() {
     Promise.all([getOrCreateProfile(), supabase.from('channels').select('*').order('created_at'), supabase.from('emojis').select('*').order('name')]).then(([profileResult, channelResult, emojiResult]) => {
       if (profileResult.error || channelResult.error || emojiResult.error) return setStatus(profileResult.error?.message || channelResult.error?.message || emojiResult.error?.message);
       setProfile(profileResult.data);
+      setProfileName(profileResult.data.display_name || '');
       setChannels(channelResult.data);
       setChannelId((current) => current || channelResult.data[0]?.id || null);
       setEmojis(emojiResult.data);
@@ -277,6 +280,7 @@ export default function App() {
   async function loadMessages() { const { data, error } = await supabase.from('messages').select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles!messages_user_id_fkey(display_name, role), reactions(emoji_name, user_id)').eq('channel_id', channelId).is('parent_id', null).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(120); if (error) setStatus(error.message); else { setMessages(data.reverse()); await supabase.from('read_receipts').upsert({ channel_id: channelId, last_read_at: new Date().toISOString() }); setUnread((current) => ({ ...current, [channelId]: 0 })); } }
   async function loadDmMessages() { const { data, error } = await supabase.from('dm_messages').select('id, body, created_at, user_id, profiles!dm_messages_user_id_fkey(display_name)').eq('conversation_id', dmId).order('created_at').limit(120); if (error) setStatus(error.message); else setDmMessages(data); }
   async function signIn(event) { event.preventDefault(); setStatus('Opening Hack Club Auth...'); const { error } = await supabase.auth.signInWithOAuth({ provider: 'custom:hca', options: { redirectTo: location.origin + import.meta.env.BASE_URL } }); if (error) setStatus(error.message); }
+  async function saveProfile(event) { event.preventDefault(); const name = profileName.trim(); if (name.length < 2) return setStatus('Display name too short.'); const { data, error } = await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id).select().single(); if (error) setStatus(error.message); else { setProfile(data); setProfileName(data.display_name); setStatus('Profile saved.'); reloadUsers(data.role); } }
   async function uploadAttachment() { if (!attachmentFile) return {}; if (attachmentFile.size > 10 * 1024 * 1024) return { error: { message: 'Attachment max size is 10MB.' } }; const safeName = attachmentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_'); const path = `${crypto.randomUUID()}-${safeName}`; const upload = await supabase.storage.from('attachments').upload(path, attachmentFile); if (upload.error) return { error: upload.error }; const { data } = supabase.storage.from('attachments').getPublicUrl(path); setAttachmentFile(null); return { attachment_url: data.publicUrl, attachment_name: attachmentFile.name, attachment_type: attachmentFile.type }; }
   async function sendMessage(event) { event.preventDefault(); const body = message.trim(); if (!body || !channelId) return; setMessage(''); const attachment = await uploadAttachment(); if (attachment.error) return setStatus(attachment.error.message); const { error } = await supabase.from('messages').insert({ channel_id: channelId, body, ...attachment }); if (error) { setMessage(body); setStatus(error.message); } }
   async function sendThreadMessage(event) { event.preventDefault(); const body = threadMessage.trim(); if (!body || !threadParent) return; setThreadMessage(''); const { error } = await supabase.from('messages').insert({ channel_id: channelId, parent_id: threadParent.id, body }); if (error) { setThreadMessage(body); setStatus(error.message); } else loadThread(threadParent); }
@@ -301,7 +305,7 @@ export default function App() {
 
   return (
     <main className="shell">
-      <TopBar profile={profile} search={search} setSearch={setSearch} onSearch={runSearch} onSignOut={() => supabase.auth.signOut()} />
+      <TopBar profile={profile} search={search} setSearch={setSearch} onSearch={runSearch} onAccount={() => setDrawer('profile')} />
       <section className="workspace-shell">
         <Sidebar channels={channels} channelId={channelId} dms={dms} dmId={dmId} unread={unread} isStaff={isStaff} onChannel={(id) => { setChannelId(id); setDmId(null); setThreadParent(null); }} onDm={(id) => { setDmId(id); setThreadParent(null); }} onAdmin={() => setDrawer('admin')} />
         <section className="chat-shell">
@@ -309,7 +313,7 @@ export default function App() {
           <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
           <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} />
         </section>
-        <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} />
+        <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />
       </section>
     </main>
   );

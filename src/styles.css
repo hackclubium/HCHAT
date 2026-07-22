@@ -102,6 +102,12 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .card, .result-list button, .people-list article { display: grid; gap: 4px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 11px; color: var(--text); background: #fff; text-align: left; }
 .card h3, .card p { margin: 0; }
 .card p, .result-list small, .people-list small { color: var(--muted); }
+.profile-card { display: grid; place-items: center; gap: 6px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 14px; padding: 18px; background: #fff; text-align: center; }
+.profile-card span { display: grid; width: 64px; height: 64px; place-items: center; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #36c5f0, #611f69); font-size: 1.25rem; font-weight: 900; }
+.profile-card strong { font-size: 1.1rem; }
+.profile-card small { color: var(--muted); }
+.signout { width: 100%; color: #454245; border: 1px solid var(--border); background: #fff; }
+.signout:hover { color: #fff; border-color: var(--danger); background: var(--danger); }
 .stack { display: grid; gap: 8px; margin-bottom: 14px; }
 .emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 7px; margin-bottom: 14px; }
 .emoji-grid button { position: relative; display: grid; min-height: 38px; place-items: center; border: 1px solid var(--border); background: #fff; }
