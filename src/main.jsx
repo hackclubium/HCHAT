@@ -194,7 +194,7 @@ function App() {
   async function reloadDms() {
     const { data, error } = await supabase
       .from('dm_conversations')
-      .select('id, created_at, dm_members(profiles(id, display_name))')
+      .select('id, created_at, dm_members!dm_members_conversation_id_fkey(profiles!dm_members_user_id_fkey(id, display_name))')
       .order('created_at', { ascending: false });
     if (error) setStatus(error.message);
     else setDms(data);
@@ -203,7 +203,7 @@ function App() {
   async function loadMessages() {
     const { data, error } = await supabase
       .from('messages')
-      .select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles(display_name, role), reactions(emoji_name, user_id)')
+      .select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles!messages_user_id_fkey(display_name, role), reactions(emoji_name, user_id)')
       .eq('channel_id', channelId)
       .is('parent_id', null)
       .order('pinned', { ascending: false })
@@ -220,7 +220,7 @@ function App() {
   async function loadDmMessages() {
     const { data, error } = await supabase
       .from('dm_messages')
-      .select('id, body, created_at, user_id, profiles(display_name)')
+      .select('id, body, created_at, user_id, profiles!dm_messages_user_id_fkey(display_name)')
       .eq('conversation_id', dmId)
       .order('created_at')
       .limit(120);
@@ -303,7 +303,7 @@ function App() {
   async function loadThread(parent) {
     const { data, error } = await supabase
       .from('messages')
-      .select('id, body, created_at, user_id, profiles(display_name)')
+      .select('id, body, created_at, user_id, profiles!messages_user_id_fkey(display_name)')
       .eq('parent_id', parent.id)
       .order('created_at');
     if (error) setStatus(error.message);
@@ -421,7 +421,7 @@ function App() {
     if (!query) return setSearchResults([]);
     const { data, error } = await supabase
       .from('messages')
-      .select('id, body, created_at, channel_id, channels(name), profiles(display_name)')
+      .select('id, body, created_at, channel_id, channels!messages_channel_id_fkey(name), profiles!messages_user_id_fkey(display_name)')
       .ilike('body', `%${query}%`)
       .order('created_at', { ascending: false })
       .limit(25);
