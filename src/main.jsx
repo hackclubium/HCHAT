@@ -149,7 +149,7 @@ function App() {
     const staff = role === 'mod' || role === 'admin';
     const { data, error } = await supabase
       .from('profiles')
-      .select(staff ? 'id, email, display_name, role, moderation(banned, timeout_until, reason)' : 'id, display_name, role')
+      .select(staff ? 'id, email, display_name, role, moderation!moderation_user_id_fkey(banned, timeout_until, reason)' : 'id, display_name, role')
       .eq('approved', true)
       .order('display_name');
     if (error) setStatus(error.message);
@@ -158,7 +158,7 @@ function App() {
 
   async function reloadAudit(role = profile?.role) {
     if (role !== 'mod' && role !== 'admin') return;
-    const { data, error } = await supabase.from('audit_logs').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(50);
+    const { data, error } = await supabase.from('audit_logs').select('*, profiles!audit_logs_actor_id_fkey(display_name)').order('created_at', { ascending: false }).limit(50);
     if (error) setStatus(error.message);
     else setAuditLogs(data);
   }
