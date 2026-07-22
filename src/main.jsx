@@ -27,7 +27,6 @@ function renderMessage(body, emojis) {
 function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [channels, setChannels] = useState([]);
   const [channelId, setChannelId] = useState(null);
@@ -226,9 +225,12 @@ function App() {
 
   async function signIn(event) {
     event.preventDefault();
-    setStatus('Sending login link...');
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
-    setStatus(error ? error.message : 'Check your email.');
+    setStatus('Opening Hack Club Auth...');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'custom:hca',
+      options: { redirectTo: location.origin + import.meta.env.BASE_URL },
+    });
+    if (error) setStatus(error.message);
   }
 
   async function saveProfile(event) {
@@ -486,8 +488,7 @@ function App() {
           <p className="eyebrow">HCHAT</p>
           <h1>Chat for the club.</h1>
           <form onSubmit={signIn}>
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
-            <button>Send magic link</button>
+            <button className="login-button">Sign in with Hack Club</button>
           </form>
           <p>{status}</p>
         </section>

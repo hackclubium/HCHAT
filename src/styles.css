@@ -68,6 +68,8 @@ button {
   font-weight: 700;
 }
 
+.login-button { width: 100%; text-align: center; }
+
 .check { display: flex; align-items: center; gap: 8px; color: #d8bfdc; }
 .check input { width: auto; }
 
