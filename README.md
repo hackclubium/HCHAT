@@ -58,6 +58,12 @@ set role = 'admin', approved = true
 where email = 'you@example.com';
 ```
 
+If you set up Supabase before HCA/invite removal, run:
+
+```txt
+supabase/fix-existing-db.sql
+```
+
 Skipped for MVP:
 
 - voice/video
