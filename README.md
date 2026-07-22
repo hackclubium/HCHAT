@@ -26,7 +26,7 @@ Built now:
 - magic-link login
 - public channels
 - profile display names
-- invite-only join gate
+- Hack Club Auth login
 - admin/mod-only channel creation/deletion
 - public/private channels
 - private channel membership controls

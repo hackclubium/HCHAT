@@ -5,7 +5,7 @@ create table public.profiles (
   email text,
   display_name text not null check (char_length(display_name) between 2 and 40),
   role public.member_role not null default 'member',
-  approved boolean not null default false,
+  approved boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -65,15 +65,6 @@ create table public.moderation (
   reason text not null default '' check (char_length(reason) <= 200),
   updated_by uuid references public.profiles(id) on delete set null,
   updated_at timestamptz not null default now()
-);
-
-create table public.invites (
-  code text primary key check (code ~ '^[A-Za-z0-9_-]{8,64}$'),
-  max_uses int not null default 1 check (max_uses between 1 and 10000),
-  uses int not null default 0 check (uses >= 0),
-  expires_at timestamptz,
-  created_by uuid references public.profiles(id) on delete set null default auth.uid(),
-  created_at timestamptz not null default now()
 );
 
 create table public.dm_conversations (
@@ -189,28 +180,6 @@ as $$
   );
 $$;
 
-create function public.redeem_invite(invite_code text)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  update public.invites
-  set uses = uses + 1
-  where code = invite_code
-    and uses < max_uses
-    and (expires_at is null or expires_at > now());
-
-  if not found then
-    return false;
-  end if;
-
-  update public.profiles set approved = true where id = auth.uid();
-  return true;
-end;
-$$;
-
 create function public.create_dm(other_user_id uuid)
 returns uuid
 language plpgsql
@@ -272,8 +241,8 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, display_name)
-  values (new.id, new.email, split_part(new.email, '@', 1))
+  insert into public.profiles (id, email, display_name, approved)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)), true)
   on conflict (id) do nothing;
   return new;
 end;
@@ -290,7 +259,6 @@ alter table public.messages enable row level security;
 alter table public.message_edits enable row level security;
 alter table public.reactions enable row level security;
 alter table public.moderation enable row level security;
-alter table public.invites enable row level security;
 alter table public.dm_conversations enable row level security;
 alter table public.dm_members enable row level security;
 alter table public.dm_messages enable row level security;
@@ -324,10 +292,6 @@ create policy "delete own reactions" on public.reactions for delete to authentic
 create policy "staff read moderation" on public.moderation for select to authenticated using (public.is_staff() or user_id = auth.uid());
 create policy "staff write moderation" on public.moderation for insert to authenticated with check (public.is_staff());
 create policy "staff update moderation" on public.moderation for update to authenticated using (public.is_staff()) with check (public.is_staff());
-
-create policy "staff read invites" on public.invites for select to authenticated using (public.is_staff());
-create policy "staff create invites" on public.invites for insert to authenticated with check (public.is_staff());
-create policy "staff delete invites" on public.invites for delete to authenticated using (public.is_staff());
 
 create policy "read own dms" on public.dm_conversations for select to authenticated using (public.is_dm_member(id));
 create policy "read own dm members" on public.dm_members for select to authenticated using (public.is_dm_member(conversation_id));
@@ -370,11 +334,11 @@ on conflict (id) do update set public = excluded.public, file_size_limit = exclu
 create policy "read attachments" on storage.objects for select to authenticated using (bucket_id = 'attachments');
 create policy "upload attachments" on storage.objects for insert to authenticated with check (bucket_id = 'attachments' and public.can_post());
 
-grant select on public.profiles, public.channels, public.channel_members, public.messages, public.message_edits, public.reactions, public.moderation, public.invites, public.dm_conversations, public.dm_members, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
-grant insert on public.channels, public.channel_members, public.messages, public.reactions, public.moderation, public.invites, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
+grant select on public.profiles, public.channels, public.channel_members, public.messages, public.message_edits, public.reactions, public.moderation, public.dm_conversations, public.dm_members, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
+grant insert on public.channels, public.channel_members, public.messages, public.reactions, public.moderation, public.dm_messages, public.read_receipts, public.audit_logs, public.emojis to authenticated;
 grant update on public.channels, public.messages, public.moderation, public.read_receipts to authenticated;
-grant delete on public.channels, public.channel_members, public.messages, public.reactions, public.invites, public.dm_messages, public.emojis to authenticated;
-grant execute on function public.redeem_invite(text), public.create_dm(uuid), public.edit_message(uuid, text) to authenticated;
+grant delete on public.channels, public.channel_members, public.messages, public.reactions, public.dm_messages, public.emojis to authenticated;
+grant execute on function public.create_dm(uuid), public.edit_message(uuid, text) to authenticated;
 revoke update on public.profiles from authenticated;
 grant update (display_name) on public.profiles to authenticated;
 

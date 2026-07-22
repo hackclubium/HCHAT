@@ -36,7 +36,6 @@ function App() {
   const [emojis, setEmojis] = useState([]);
   const [users, setUsers] = useState([]);
   const [channelMembers, setChannelMembers] = useState([]);
-  const [invites, setInvites] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [dms, setDms] = useState([]);
   const [dmId, setDmId] = useState(null);
@@ -51,8 +50,6 @@ function App() {
   const [newChannel, setNewChannel] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [newPrivate, setNewPrivate] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
-  const [newInviteUses, setNewInviteUses] = useState(10);
   const [topic, setTopic] = useState('');
   const [emojiName, setEmojiName] = useState('');
   const [emojiFile, setEmojiFile] = useState(null);
@@ -90,7 +87,6 @@ function App() {
       setChannelId((current) => current || channelResult.data[0]?.id || null);
       setEmojis(emojiResult.data);
       reloadUsers(profileResult.data.role);
-      reloadInvites(profileResult.data.role);
       reloadAudit(profileResult.data.role);
       reloadDms();
       reloadUnread(channelResult.data);
@@ -154,13 +150,6 @@ function App() {
       .order('display_name');
     if (error) setStatus(error.message);
     else setUsers(data);
-  }
-
-  async function reloadInvites(role = profile?.role) {
-    if (role !== 'mod' && role !== 'admin') return;
-    const { data, error } = await supabase.from('invites').select('*').order('created_at', { ascending: false });
-    if (error) setStatus(error.message);
-    else setInvites(data);
   }
 
   async function reloadAudit(role = profile?.role) {
@@ -401,34 +390,6 @@ function App() {
     }
   }
 
-  async function redeemInvite(event) {
-    event.preventDefault();
-    const { data, error } = await supabase.rpc('redeem_invite', { invite_code: inviteCode.trim() });
-    if (error) setStatus(error.message);
-    else if (!data) setStatus('Invalid or expired invite.');
-    else location.reload();
-  }
-
-  async function createInvite(event) {
-    event.preventDefault();
-    const code = crypto.randomUUID().replaceAll('-', '').slice(0, 16);
-    const { error } = await supabase.from('invites').insert({ code, max_uses: Number(newInviteUses) || 1 });
-    if (error) setStatus(error.message);
-    else {
-      reloadInvites();
-      audit('invite.create', code);
-    }
-  }
-
-  async function deleteInvite(code) {
-    const { error } = await supabase.from('invites').delete().eq('code', code);
-    if (error) setStatus(error.message);
-    else {
-      reloadInvites();
-      audit('invite.delete', code);
-    }
-  }
-
   async function startDm(user) {
     const { data, error } = await supabase.rpc('create_dm', { other_user_id: user.id });
     if (error) setStatus(error.message);
@@ -489,22 +450,6 @@ function App() {
           <h1>Chat for the club.</h1>
           <form onSubmit={signIn}>
             <button className="login-button">Sign in with Hack Club</button>
-          </form>
-          <p>{status}</p>
-        </section>
-      </main>
-    );
-  }
-
-  if (profile && !profile.approved) {
-    return (
-      <main className="login">
-        <section>
-          <p className="eyebrow">INVITE REQUIRED</p>
-          <h1>Got an invite?</h1>
-          <form onSubmit={redeemInvite}>
-            <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="invite code" required />
-            <button>Join</button>
           </form>
           <p>{status}</p>
         </section>
@@ -710,20 +655,6 @@ function App() {
                 </div>
               </>
             )}
-            <h2>Invites</h2>
-            <form className="stack" onSubmit={createInvite}>
-              <input type="number" min="1" max="10000" value={newInviteUses} onChange={(event) => setNewInviteUses(event.target.value)} />
-              <button>Create invite</button>
-            </form>
-            <div className="results">
-              {invites.map((invite) => (
-                <button onClick={() => navigator.clipboard?.writeText(invite.code)} key={invite.code}>
-                  <small>{invite.uses}/{invite.max_uses} used</small>
-                  <span>{invite.code}</span>
-                  <span className="link" onClick={(event) => { event.stopPropagation(); deleteInvite(invite.code); }}>delete</span>
-                </button>
-              ))}
-            </div>
             <h2>Audit</h2>
             <div className="results">
               {auditLogs.map((log) => (
