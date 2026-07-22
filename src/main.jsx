@@ -313,6 +313,10 @@ function App() {
   async function deleteMessage(id) {
     const { error } = await supabase.from('messages').delete().eq('id', id);
     if (error) setStatus(error.message);
+    else {
+      setMessages((current) => current.filter((item) => item.id !== id));
+      setThreadParent((current) => current ? { ...current, replies: (current.replies || []).filter((item) => item.id !== id) } : current);
+    }
   }
 
   async function saveEdit(event) {
