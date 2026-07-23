@@ -53,7 +53,7 @@ create table public.channel_members (
 create table public.reactions (
   message_id uuid not null references public.messages(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade default auth.uid(),
-  emoji_name text not null check (emoji_name ~ '^[a-z0-9_]{2,32}$'),
+  emoji_name text not null check (char_length(emoji_name) between 1 and 64),
   created_at timestamptz not null default now(),
   primary key (message_id, user_id, emoji_name)
 );
@@ -300,7 +300,7 @@ create policy "read own dm messages" on public.dm_messages for select to authent
 create policy "send own dm messages" on public.dm_messages for insert to authenticated with check (user_id = auth.uid() and public.is_dm_member(conversation_id) and public.can_post());
 create policy "delete own dm messages" on public.dm_messages for delete to authenticated using (user_id = auth.uid());
 
-create policy "read own receipts" on public.read_receipts for select to authenticated using (public.can_access_channel(channel_id));
+create policy "read own receipts" on public.read_receipts for select to authenticated using (user_id = auth.uid() and public.can_access_channel(channel_id));
 create policy "upsert own receipts" on public.read_receipts for insert to authenticated with check (user_id = auth.uid() and public.can_access_channel(channel_id));
 create policy "update own receipts" on public.read_receipts for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 

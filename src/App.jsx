@@ -46,7 +46,7 @@ function messageText(body, emojis, users = [], profile) {
 function emojiNode(name, emojis) {
   const custom = emojis.find((item) => item.name === name);
   if (custom) return <img className="emoji" src={custom.image_url} alt={`:${name}:`} title={`:${name}:`} />;
-  return <span className="unicode-emoji">{unicodeEmoji[name] || `:${name}:`}</span>;
+  return <span className="unicode-emoji">{unicodeEmoji[name] || name}</span>;
 }
 
 function emojiNamesIn(text = '') {
@@ -138,13 +138,30 @@ function ChannelHeader({ dmId, channel, status, onDrawer }) {
 }
 
 function EmojiChooser({ emojis, onPick }) {
+  const [search, setSearch] = useState('');
+  const query = search.trim().toLowerCase();
+  const options = [...unicodeEmojiRows, ...emojis]
+    .filter((emoji, index, all) => emoji.name.includes(query) && all.findIndex((item) => item.name === emoji.name) === index);
+  function submit(event) {
+    event.preventDefault();
+    const exact = options.find((emoji) => emoji.name === query);
+    if (exact) onPick(exact.name);
+    else if (search.trim()) onPick(search.trim());
+  }
   return (
-    <div className="emoji-chooser">
-      {[...unicodeEmojiRows, ...emojis.slice(0, 80)].map((emoji) => (
-        <button onClick={() => onPick(emoji.name)} title={`:${emoji.name}:`} key={emoji.name}>
-          {'symbol' in emoji ? <span>{emoji.symbol}</span> : <img src={emoji.image_url} alt={`:${emoji.name}:`} />}
-        </button>
-      ))}
+    <div className="emoji-chooser" onClick={(event) => event.stopPropagation()}>
+      <form onSubmit={submit}>
+        <input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search or paste an emoji" maxLength="64" />
+        <button disabled={!search.trim()}>{query && options.some((emoji) => emoji.name === query) ? 'Use' : 'Add'}</button>
+      </form>
+      <div className="emoji-options">
+        {options.map((emoji) => (
+          <button type="button" onClick={() => onPick(emoji.name)} title={`:${emoji.name}:`} key={emoji.name}>
+            {'symbol' in emoji ? <span>{emoji.symbol}</span> : <img src={emoji.image_url} alt={`:${emoji.name}:`} />}
+          </button>
+        ))}
+      </div>
+      {!options.length && !search.trim() && <small>No emoji found</small>}
     </div>
   );
 }
@@ -175,7 +192,7 @@ function MessageRow({ item, previous, emojis, users, profile, isStaff, session, 
         {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
         <div className="reactions">
           {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
-            <button onClick={() => onReact(item, name)} key={name}>{emojiNode(name, emojis)} {count}</button>
+            <button className={(item.reactions || []).some((reaction) => reaction.user_id === session.user.id && reaction.emoji_name === name) ? 'mine' : ''} onClick={() => onReact(item, name)} key={name}>{emojiNode(name, emojis)} {count}</button>
           ))}
         </div>
       </div>
@@ -217,7 +234,7 @@ function MessageList(props) {
   return <div className="message-list" ref={scrollRef}>{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
 }
 
-function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, users }) {
+function Composer({ dmId, value, setValue, onSubmit, onFile, onTyping, typingUsers, channel, emojis, users }) {
   const [selected, setSelected] = useState(0);
   const [remoteEmojis, setRemoteEmojis] = useState([]);
   const match = value.match(/:([a-z0-9_]{1,32})$/i);
@@ -270,9 +287,10 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, us
           {suggestions.map((item, index) => <button className={index === selected ? 'active' : ''} type="button" onMouseEnter={() => setSelected(index)} onClick={() => completeEmoji(query ? item.name : mentionKey(item.display_name))} key={query ? item.name : item.id}>{query ? emojiNode(item.name, emojis) : <span className="mini-avatar">{initials(item.display_name)}</span>} {query ? `:${item.name}:` : `@${item.display_name}`}</button>)}
         </div>
       )}
+      <div className={`typing-indicator ${typingUsers.length ? 'visible' : ''}`}>{typingUsers.length ? `${typingUsers.slice(0, 2).join(', ')} ${typingUsers.length > 1 ? 'are' : 'is'} typing...` : '\u00a0'}</div>
       <form className="composer" onSubmit={onSubmit}>
         <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Type :skull: or :party_blob:</span></div>
-        <input value={value} onChange={(event) => setValue(event.target.value)} onKeyDown={handleKeyDown} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
+        <input value={value} onChange={(event) => { setValue(event.target.value); onTyping(); }} onKeyDown={handleKeyDown} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
         {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
         <button>Send</button>
       </form>
@@ -329,7 +347,10 @@ export default function App() {
   const [emojiName, setEmojiName] = useState('');
   const [emojiFile, setEmojiFile] = useState(null);
   const [attachmentFile, setAttachmentFile] = useState(null);
+  const [typingUsers, setTypingUsers] = useState([]);
   const [status, setStatus] = useState(supabase ? '' : 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  const typingRoom = useRef(null);
+  const typingTimers = useRef(new Map());
 
   const isStaff = profile?.role === 'mod' || profile?.role === 'admin';
   const currentChannel = channels.find((channel) => channel.id === channelId);
@@ -353,7 +374,7 @@ export default function App() {
       reloadUsers(profileResult.data.role);
       reloadAudit(profileResult.data.role);
       reloadDms();
-      reloadUnread(channelResult.data, profileResult.data);
+      reloadUnread(channelResult.data, profileResult.data, channelResult.data[0]?.id);
     });
     const room = supabase.channel('global').on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => reloadChannels()).on('postgres_changes', { event: '*', schema: 'public', table: 'emojis' }, () => reloadEmojis()).subscribe();
     return () => supabase.removeChannel(room);
@@ -375,6 +396,25 @@ export default function App() {
     return () => supabase.removeChannel(room);
   }, [dmId]);
 
+  useEffect(() => {
+    const roomId = dmId ? `dm:${dmId}` : channelId ? `channel:${channelId}` : null;
+    if (!supabase || !roomId || !profile) return;
+    setTypingUsers([]);
+    const room = supabase.channel(`typing:${roomId}`).on('broadcast', { event: 'typing' }, ({ payload }) => {
+      if (!payload?.userId || payload.userId === session.user.id) return;
+      clearTimeout(typingTimers.current.get(payload.userId));
+      setTypingUsers((current) => [...current.filter((name) => name !== payload.name), payload.name]);
+      typingTimers.current.set(payload.userId, setTimeout(() => setTypingUsers((current) => current.filter((name) => name !== payload.name)), 1800));
+    }).subscribe();
+    typingRoom.current = room;
+    return () => {
+      typingRoom.current = null;
+      typingTimers.current.forEach(clearTimeout);
+      typingTimers.current.clear();
+      supabase.removeChannel(room);
+    };
+  }, [channelId, dmId, profile, session]);
+
   async function getOrCreateProfile() {
     const existing = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
     if (existing.data || existing.error) return existing;
@@ -387,7 +427,7 @@ export default function App() {
   async function reloadUsers(role = profile?.role) { const staff = role === 'mod' || role === 'admin'; const { data, error } = await supabase.from('profiles').select(staff ? 'id, email, display_name, role, moderation!moderation_user_id_fkey(banned, timeout_until, reason)' : 'id, display_name, role').eq('approved', true).order('display_name'); if (error) setStatus(error.message); else setUsers(data); }
   async function reloadAudit(role = profile?.role) { if (role !== 'mod' && role !== 'admin') return; const { data, error } = await supabase.from('audit_logs').select('*, profiles!audit_logs_actor_id_fkey(display_name)').order('created_at', { ascending: false }).limit(50); if (error) setStatus(error.message); else setAuditLogs(data); }
   async function reloadChannelMembers() { if (!channelId) return; const { data } = await supabase.from('channel_members').select('user_id').eq('channel_id', channelId); setChannelMembers((data || []).map((item) => item.user_id)); }
-  async function reloadUnread(channelRows = channels, currentProfile = profile) { const pairs = await Promise.all(channelRows.map(async (channel) => { const receipt = await supabase.from('read_receipts').select('last_read_at').eq('channel_id', channel.id).maybeSingle(); const since = receipt.data?.last_read_at || '1970-01-01T00:00:00Z'; const count = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('channel_id', channel.id).gt('created_at', since).is('parent_id', null); const mentionRows = await supabase.from('messages').select('body').eq('channel_id', channel.id).gt('created_at', since).is('parent_id', null).limit(100); return [channel.id, count.count || 0, (mentionRows.data || []).filter((item) => mentionsProfile(item.body, currentProfile)).length]; })); setUnread(Object.fromEntries(pairs.map(([id, count]) => [id, count]))); setMentions(Object.fromEntries(pairs.map(([id, , mentionCount]) => [id, mentionCount]))); }
+  async function reloadUnread(channelRows = channels, currentProfile = profile, activeChannelId = channelId) { const pairs = await Promise.all(channelRows.map(async (channel) => { if (channel.id === activeChannelId) return [channel.id, 0, 0]; const receipt = await supabase.from('read_receipts').select('last_read_at').eq('channel_id', channel.id).eq('user_id', session.user.id).maybeSingle(); const since = receipt.data?.last_read_at || '1970-01-01T00:00:00Z'; const count = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('channel_id', channel.id).gt('created_at', since).is('parent_id', null); const mentionRows = await supabase.from('messages').select('body').eq('channel_id', channel.id).gt('created_at', since).is('parent_id', null).limit(100); return [channel.id, count.count || 0, (mentionRows.data || []).filter((item) => mentionsProfile(item.body, currentProfile)).length]; })); setUnread(Object.fromEntries(pairs.map(([id, count]) => [id, count]))); setMentions(Object.fromEntries(pairs.map(([id, , mentionCount]) => [id, mentionCount]))); }
   async function reloadDms() { const { data, error } = await supabase.from('dm_conversations').select('id, created_at, dm_members!dm_members_conversation_id_fkey(profiles!dm_members_user_id_fkey(id, display_name))').order('created_at', { ascending: false }); if (error) setStatus(error.message); else setDms(data); }
   async function loadMessages() { const { data, error } = await supabase.from('messages').select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles!messages_user_id_fkey(display_name, role), reactions(emoji_name, user_id)').eq('channel_id', channelId).is('parent_id', null).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(120); if (error) setStatus(error.message); else { await loadEmojiNames(data.flatMap((item) => [...emojiNamesIn(item.body), ...(item.reactions || []).map((reaction) => reaction.emoji_name)])); setMessages(data.reverse()); await supabase.from('read_receipts').upsert({ channel_id: channelId, last_read_at: new Date().toISOString() }); setUnread((current) => ({ ...current, [channelId]: 0 })); setMentions((current) => ({ ...current, [channelId]: 0 })); } }
   async function loadDmMessages() { const { data, error } = await supabase.from('dm_messages').select('id, body, created_at, user_id, profiles!dm_messages_user_id_fkey(display_name)').eq('conversation_id', dmId).order('created_at').limit(120); if (error) setStatus(error.message); else setDmMessages(data); }
@@ -401,7 +441,8 @@ export default function App() {
   async function deleteMessage(id) { const { error } = await supabase.from('messages').delete().eq('id', id); if (error) setStatus(error.message); else { setMessages((current) => current.filter((item) => item.id !== id)); setThreadParent((current) => current ? { ...current, replies: (current.replies || []).filter((item) => item.id !== id) } : current); } }
   async function saveEdit(event) { event.preventDefault(); const body = editingBody.trim(); if (!body || !editingId) return; const { data, error } = await supabase.rpc('edit_message', { message_id: editingId, new_body: body }); if (error) setStatus(error.message); else if (!data) setStatus('Cannot edit this message.'); else { setEditingId(null); setEditingBody(''); loadMessages(); } }
   async function togglePin(item) { const { error } = await supabase.from('messages').update({ pinned: !item.pinned }).eq('id', item.id); if (error) setStatus(error.message); }
-  async function react(item, emojiName) { const exists = item.reactions?.some((reaction) => reaction.user_id === session.user.id && reaction.emoji_name === emojiName); const request = exists ? supabase.from('reactions').delete().eq('message_id', item.id).eq('emoji_name', emojiName) : supabase.from('reactions').insert({ message_id: item.id, emoji_name: emojiName }); const { error } = await request; if (error) setStatus(error.message); }
+  async function react(item, emojiName) { const name = emojiName.trim(); if (!name || [...name].length > 64) return; const exists = item.reactions?.some((reaction) => reaction.user_id === session.user.id && reaction.emoji_name === name); const request = exists ? supabase.from('reactions').delete().eq('message_id', item.id).eq('emoji_name', name) : supabase.from('reactions').insert({ message_id: item.id, emoji_name: name }); const { error } = await request; if (error) setStatus(error.message); }
+  function sendTyping() { typingRoom.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: session.user.id, name: profile.display_name } }); }
   async function createChannel(event) { event.preventDefault(); const name = newChannel.trim().toLowerCase(); if (!/^[a-z0-9_-]{2,32}$/.test(name)) return setStatus('Channel name must be 2-32 chars: a-z, 0-9, underscore, dash.'); const { error } = await supabase.from('channels').insert({ name, topic: newTopic.trim(), private: newPrivate }); if (error) setStatus(error.message); else { setNewChannel(''); setNewTopic(''); setNewPrivate(false); audit('channel.create', name); } }
   async function saveTopic(event) { event.preventDefault(); const { error } = await supabase.from('channels').update({ topic: topic.trim() }).eq('id', channelId); if (error) setStatus(error.message); else audit('channel.topic', currentChannel?.name || channelId); }
   async function setModeration(user, patch) { const { error } = await supabase.from('moderation').upsert({ user_id: user.id, updated_by: session.user.id, ...patch }); if (error) setStatus(error.message); else { reloadUsers(); audit('moderation.update', user.display_name); } }
@@ -423,7 +464,7 @@ export default function App() {
         <section className="chat-shell">
           <ChannelHeader dmId={dmId} channel={currentChannel} status={status} onDrawer={setDrawer} />
           <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} users={users} profile={profile} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} reactingTo={reactingTo} setReactingTo={setReactingTo} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
-          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} emojis={emojis} users={users} />
+          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} onTyping={sendTyping} typingUsers={typingUsers} channel={currentChannel} emojis={emojis} users={users} />
         </section>
         {drawer && <button className="drawer-backdrop" onClick={() => setDrawer(null)} aria-label="Close drawer"></button>}
         <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />

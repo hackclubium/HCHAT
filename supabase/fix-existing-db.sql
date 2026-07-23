@@ -37,3 +37,13 @@ create policy "create own profile" on public.profiles for insert to authenticate
 grant insert on public.profiles to authenticated;
 revoke update on public.profiles from authenticated;
 grant update (display_name) on public.profiles to authenticated;
+
+-- Reactions accept uploaded emoji names and literal Unicode emoji.
+alter table public.reactions drop constraint if exists reactions_emoji_name_check;
+alter table public.reactions add constraint reactions_emoji_name_check check (char_length(emoji_name) between 1 and 64);
+
+-- Receipts are private. Without this filter, one channel can return several users'
+-- receipts and make the client treat every existing message as unread.
+drop policy if exists "read own receipts" on public.read_receipts;
+create policy "read own receipts" on public.read_receipts for select to authenticated
+using (user_id = auth.uid() and public.can_access_channel(channel_id));
