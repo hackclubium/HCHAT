@@ -19,6 +19,30 @@ Add repository secrets:
 
 Then enable Pages source: GitHub Actions.
 
+## Vercel
+
+This app can also deploy to Vercel as a static Vite app.
+
+1. Import `hackclubium/HCHAT` in Vercel.
+2. Set environment variables:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+3. Build command:
+
+```txt
+npm run build
+```
+
+4. Output directory:
+
+```txt
+dist
+```
+
+`vercel.json` rewrites all routes to `index.html`.
+
 ## Scope
 
 Built now:
