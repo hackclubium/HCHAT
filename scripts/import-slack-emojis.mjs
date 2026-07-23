@@ -20,9 +20,22 @@ if (!payload.ok) {
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+let createdBy = process.env.SUPABASE_IMPORT_USER_ID;
+if (!createdBy) {
+  const admin = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1).maybeSingle();
+  const fallback = admin.data || (await supabase.from('profiles').select('id').limit(1).maybeSingle()).data;
+  createdBy = fallback?.id;
+}
+
+if (!createdBy) {
+  console.error('No profile found. Sign in once or set SUPABASE_IMPORT_USER_ID to a profiles.id value.');
+  process.exit(1);
+}
+
 const rows = Object.entries(payload.emoji)
   .filter(([, url]) => typeof url === 'string' && !url.startsWith('alias:'))
-  .map(([name, image_url]) => ({ name: name.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 32), image_url }));
+  .map(([name, image_url]) => ({ name: name.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 32), image_url, created_by: createdBy }));
 
 for (let index = 0; index < rows.length; index += 500) {
   const batch = rows.slice(index, index + 500);
