@@ -22,10 +22,14 @@ input { width: 100%; min-width: 0; border: 1px solid #b8b4bb; border-radius: 8px
 input:focus { border-color: var(--active); outline: 3px solid #1d9bd11f; }
 button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; background: var(--green); font-weight: 800; }
 
-.login-screen { display: grid; min-height: 100vh; place-items: center; padding: 24px; background: linear-gradient(135deg, #f7eff8, #fff 45%, #eef6fb); }
+.login-screen { position: relative; display: grid; min-height: 100vh; place-items: center; padding: 24px; overflow: hidden; background: radial-gradient(circle at 20% 15%, #ffd7f6, transparent 30%), radial-gradient(circle at 80% 20%, #d8f4ff, transparent 28%), linear-gradient(135deg, #f7eff8, #fff 45%, #eef6fb); }
+.login-blob { position: absolute; border-radius: 999px; filter: blur(2px); opacity: .55; }
+.login-blob.one { width: 260px; height: 260px; left: -80px; bottom: 10%; background: #611f69; }
+.login-blob.two { width: 220px; height: 220px; right: -60px; top: 12%; background: #36c5f0; }
 .login-card { width: min(460px, 100%); border: 1px solid #ded7e0; border-radius: 18px; padding: 36px; background: #fff; box-shadow: 0 24px 90px #1d1c1d20; }
 .login-card p { margin: 0 0 8px; color: var(--side); font-size: .78rem; font-weight: 900; letter-spacing: .12em; }
 .login-card h1 { margin: 0 0 26px; font-size: clamp(2.2rem, 8vw, 4rem); line-height: .93; letter-spacing: -.06em; }
+.login-card span { display: block; margin: -12px 0 24px; color: var(--muted); line-height: 1.5; }
 .login-card button { width: 100%; padding: 13px; }
 .login-card small { display: block; margin-top: 12px; color: var(--muted); }
 
@@ -89,16 +93,19 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .thread-view { overflow: auto; padding: 12px 0 20px; }
 .thread-view > button { margin: 0 24px 12px; color: var(--active); background: transparent; }
 
-.composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; margin: 0 20px 20px; border: 1px solid #9b999d; border-radius: 12px; padding: 10px; background: #fff; }
+.composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: auto auto; gap: 8px; margin: 0 20px 20px; border: 1px solid #9b999d; border-radius: 12px; padding: 10px; background: #fff; }
+.composer-toolbar { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem; }
+.composer-toolbar b { color: #454245; }
 .composer:focus-within { border-color: #565357; box-shadow: 0 0 0 1px #565357; }
 .composer input { border: 0; padding: 8px; }
 .composer input:focus { outline: 0; }
 .composer label { display: grid; place-items: center; border-radius: 8px; padding: 0 12px; color: #454245; background: #f4f4f4; font-weight: 800; }
 .composer label input { display: none; }
 
+.drawer-backdrop { position: fixed; inset: 40px 0 0 0; z-index: 19; border: 0; border-radius: 0; background: #00000018; }
 .drawer { position: fixed; inset: 40px 0 0 auto; z-index: 20; width: min(380px, 100vw); overflow: auto; border-left: 1px solid var(--border); background: #f8f8f8; padding: 14px; box-shadow: -20px 0 50px #00000024; }
 .drawer > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.drawer > header button { color: #454245; border: 1px solid var(--border); background: #fff; }
+.drawer > header button { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; color: #454245; border: 1px solid var(--border); background: #fff; }
 .card, .result-list button, .people-list article { display: grid; gap: 4px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 11px; color: var(--text); background: #fff; text-align: left; }
 .card h3, .card p { margin: 0; }
 .card p, .result-list small, .people-list small { color: var(--muted); }

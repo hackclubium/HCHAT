@@ -36,9 +36,12 @@ function shouldGroup(previous, item) {
 function Login({ status, onSignIn }) {
   return (
     <main className="login-screen">
+      <div className="login-blob one"></div>
+      <div className="login-blob two"></div>
       <section className="login-card">
         <p>HCHAT</p>
-        <h1>Hack Club Slack Chat.</h1>
+        <h1>Hack Club chat, minus the corporate beige.</h1>
+        <span>Channels, DMs, emoji, threads, and Hack Club Auth.</span>
         <button onClick={onSignIn}>Sign in with Hack Club</button>
         {status && <small>{status}</small>}
       </section>
@@ -96,10 +99,10 @@ function ChannelHeader({ dmId, channel, status, onDrawer }) {
       </div>
       <div className="header-actions">
         {status && <span>{status}</span>}
-        <button onClick={() => onDrawer('search')}>Search</button>
-        <button onClick={() => onDrawer('people')}>People</button>
+        <button onClick={() => onDrawer('search')}>Find</button>
+        <button onClick={() => onDrawer('people')}>Members</button>
         <button onClick={() => onDrawer('emoji')}>Emoji</button>
-        <button onClick={() => onDrawer('details')}>Details</button>
+        <button onClick={() => onDrawer('details')}>Info</button>
       </div>
     </section>
   );
@@ -164,6 +167,7 @@ function MessageList(props) {
 function Composer({ dmId, value, setValue, onSubmit, onFile, channel }) {
   return (
     <form className="composer" onSubmit={onSubmit}>
+      <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Use :emoji_name:</span></div>
       <input value={value} onChange={(event) => setValue(event.target.value)} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
       {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
       <button>Send</button>
@@ -176,7 +180,7 @@ function Drawer(props) {
   if (!mode) return null;
   return (
     <aside className="drawer">
-      <header><strong>{mode === 'details' ? 'Channel details' : mode[0].toUpperCase() + mode.slice(1)}</strong><button onClick={close}>Close</button></header>
+      <header><strong>{mode === 'details' ? 'Channel details' : mode[0].toUpperCase() + mode.slice(1)}</strong><button onClick={close}>x</button></header>
       {mode === 'details' && <div className="card"><h3>{dmId ? 'Direct message' : `# ${currentChannel?.name || 'channel'}`}</h3><p>{dmId ? 'Private conversation' : currentChannel?.topic || 'No topic yet'}</p></div>}
       {mode === 'profile' && <><div className="profile-card"><span>{initials(profile?.display_name)}</span><strong>{profile?.display_name}</strong><small>{profile?.email || 'Hack Club Auth'}</small></div><form className="stack" onSubmit={saveProfile}><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Display name" maxLength="40" /><button>Save name</button></form><button className="signout" onClick={signOut}>Sign out</button></>}
       {mode === 'search' && <><form className="stack" onSubmit={runSearch}><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="find messages" /><button>Search</button></form><div className="result-list">{searchResults.map((item) => <button onClick={() => setChannelId(item.channel_id)} key={item.id}><small>#{item.channels?.name} - {item.profiles?.display_name}</small><span>{item.body}</span></button>)}</div></>}
@@ -313,6 +317,7 @@ export default function App() {
           <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
           <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} />
         </section>
+        {drawer && <button className="drawer-backdrop" onClick={() => setDrawer(null)} aria-label="Close drawer"></button>}
         <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />
       </section>
     </main>
