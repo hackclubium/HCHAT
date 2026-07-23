@@ -5,6 +5,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const emojiPattern = /:([a-z0-9_]{2,32}):/g;
+const tokenPattern = /:([a-z0-9_]{2,32}):|@([a-z0-9_]{1,40})/gi;
 const unicodeEmoji = {
   skull: '💀', joy: '😂', sob: '😭', fire: '🔥', heart: '❤️', thumbs_up: '👍', thumbsup: '👍', thumbsdown: '👎', clap: '👏', pray: '🙏', eyes: '👀', rocket: '🚀', tada: '🎉', party: '🎉', wave: '👋', ok_hand: '👌', thinking: '🤔', scream: '😱', cool: '😎', smile: '😄', grin: '😁', angry: '😠', warning: '⚠️', check: '✅', x: '❌'
 };
@@ -14,14 +15,24 @@ function initials(name = '?') {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 }
 
-function messageText(body, emojis) {
+function mentionKey(name = '') {
+  return name.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
+}
+
+function messageText(body, emojis, users = [], profile) {
   const parts = [];
   let lastIndex = 0;
-  for (const match of body.matchAll(emojiPattern)) {
-    const emoji = emojis.find((item) => item.name === match[1]);
+  for (const match of body.matchAll(tokenPattern)) {
     parts.push(body.slice(lastIndex, match.index));
-    if (emoji) parts.push(<img className="emoji" src={emoji.image_url} alt={match[0]} title={match[0]} key={`${match.index}-${emoji.id}`} />);
-    else parts.push(<span className="unicode-emoji" title={match[0]} key={match.index}>{unicodeEmoji[match[1]] || match[0]}</span>);
+    if (match[1]) {
+      const emoji = emojis.find((item) => item.name === match[1]);
+      if (emoji) parts.push(<img className="emoji" src={emoji.image_url} alt={match[0]} title={match[0]} key={`${match.index}-${emoji.id}`} />);
+      else parts.push(<span className="unicode-emoji" title={match[0]} key={match.index}>{unicodeEmoji[match[1]] || match[0]}</span>);
+    } else if (match[2]) {
+      const user = users.find((item) => mentionKey(item.display_name) === match[2].toLowerCase());
+      const me = user?.id === profile?.id;
+      parts.push(<span className={me ? 'mention me' : 'mention'} key={match.index}>@{user?.display_name || match[2]}</span>);
+    }
     lastIndex = match.index + match[0].length;
   }
   parts.push(body.slice(lastIndex));
@@ -134,7 +145,7 @@ function EmojiChooser({ emojis, onPick }) {
   );
 }
 
-function MessageRow({ item, previous, emojis, isStaff, session, editingId, editingBody, setEditingBody, reactingTo, setReactingTo, onEditStart, onEditSave, onEditCancel, onDelete, onPin, onThread, onReact }) {
+function MessageRow({ item, previous, emojis, users, profile, isStaff, session, editingId, editingBody, setEditingBody, reactingTo, setReactingTo, onEditStart, onEditSave, onEditCancel, onDelete, onPin, onThread, onReact }) {
   const grouped = shouldGroup(previous, item);
   const name = item.profiles?.display_name || 'unknown';
   return (
@@ -156,7 +167,7 @@ function MessageRow({ item, previous, emojis, isStaff, session, editingId, editi
             <button>Save</button>
             <button type="button" onClick={onEditCancel}>Cancel</button>
           </form>
-        ) : <p>{messageText(item.body, emojis)}</p>}
+        ) : <p>{messageText(item.body, emojis, users, profile)}</p>}
         {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
         <div className="reactions">
           {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
@@ -191,16 +202,20 @@ function MessageList(props) {
   return <div className="message-list">{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
 }
 
-function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis }) {
+function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, users }) {
   const [selected, setSelected] = useState(0);
   const match = value.match(/:([a-z0-9_]{1,32})$/i);
   const query = match?.[1]?.toLowerCase();
+  const mentionMatch = value.match(/@([a-z0-9_]{1,40})$/i);
+  const mentionQuery = mentionMatch?.[1]?.toLowerCase();
   const suggestions = query
     ? [...unicodeEmojiRows, ...emojis].filter((emoji) => emoji.name.startsWith(query)).slice(0, 8)
+    : mentionQuery
+    ? users.filter((user) => mentionKey(user.display_name).startsWith(mentionQuery)).slice(0, 8)
     : [];
-  useEffect(() => setSelected(0), [query]);
+  useEffect(() => setSelected(0), [query, mentionQuery]);
   function completeEmoji(name) {
-    setValue(value.replace(/:([a-z0-9_]{1,32})$/i, `:${name}:`));
+    setValue(value.replace(query ? /:([a-z0-9_]{1,32})$/i : /@([a-z0-9_]{1,40})$/i, query ? `:${name}:` : `@${name} `));
   }
   function handleKeyDown(event) {
     if (!suggestions.length) return;
@@ -221,7 +236,7 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis }) 
     <div className="composer-wrap">
       {suggestions.length > 0 && (
         <div className="autocomplete">
-          {suggestions.map((emoji, index) => <button className={index === selected ? 'active' : ''} type="button" onMouseEnter={() => setSelected(index)} onClick={() => completeEmoji(emoji.name)} key={emoji.name}>{emojiNode(emoji.name, emojis)} :{emoji.name}:</button>)}
+          {suggestions.map((item, index) => <button className={index === selected ? 'active' : ''} type="button" onMouseEnter={() => setSelected(index)} onClick={() => completeEmoji(query ? item.name : mentionKey(item.display_name))} key={query ? item.name : item.id}>{query ? emojiNode(item.name, emojis) : <span className="mini-avatar">{initials(item.display_name)}</span>} {query ? `:${item.name}:` : `@${item.display_name}`}</button>)}
         </div>
       )}
       <form className="composer" onSubmit={onSubmit}>
@@ -375,8 +390,8 @@ export default function App() {
         <Sidebar channels={channels} channelId={channelId} dms={dms} dmId={dmId} unread={unread} isStaff={isStaff} onChannel={(id) => { setChannelId(id); setDmId(null); setThreadParent(null); }} onDm={(id) => { setDmId(id); setThreadParent(null); }} onAdmin={() => setDrawer('admin')} />
         <section className="chat-shell">
           <ChannelHeader dmId={dmId} channel={currentChannel} status={status} onDrawer={setDrawer} />
-          <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} reactingTo={reactingTo} setReactingTo={setReactingTo} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
-          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} emojis={emojis} />
+          <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} users={users} profile={profile} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} reactingTo={reactingTo} setReactingTo={setReactingTo} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
+          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} emojis={emojis} users={users} />
         </section>
         {drawer && <button className="drawer-backdrop" onClick={() => setDrawer(null)} aria-label="Close drawer"></button>}
         <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />

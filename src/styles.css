@@ -90,6 +90,8 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .emoji-chooser img { width: 24px; height: 24px; object-fit: contain; }
 .emoji { width: 1.35em; height: 1.35em; vertical-align: -.25em; object-fit: contain; }
 .unicode-emoji { font-size: 1.25em; vertical-align: -.12em; }
+.mention { border-radius: 4px; padding: 1px 3px; color: #1264a3; background: #e8f5ff; font-weight: 800; }
+.mention.me { color: #3f0e40; background: #fff0b8; }
 .attachment { display: inline-block; margin-top: 7px; color: var(--active); font-weight: 700; }
 .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .reactions button { padding: 3px 7px; color: var(--text); border: 1px solid #d8d8d8; background: #fff; font-size: .76rem; }
@@ -110,6 +112,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .autocomplete { position: absolute; left: 12px; bottom: calc(100% + 8px); z-index: 5; display: grid; width: min(320px, calc(100% - 24px)); max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 4px; background: #fff; box-shadow: 0 14px 40px #00000022; }
 .autocomplete button { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 9px; color: var(--text); background: transparent; text-align: left; }
 .autocomplete button:hover, .autocomplete button.active { background: #1264a3; color: #fff; }
+.mini-avatar { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 6px; color: #fff; background: linear-gradient(135deg, #611f69, #1264a3); font-size: .7rem; font-weight: 900; }
 
 .drawer-backdrop { position: fixed; inset: 40px 0 0 0; z-index: 19; border: 0; border-radius: 0; background: #00000018; }
 .drawer { position: fixed; inset: 40px 0 0 auto; z-index: 20; width: min(380px, 100vw); overflow: auto; border-left: 1px solid var(--border); background: #f8f8f8; padding: 14px; box-shadow: -20px 0 50px #00000024; }
