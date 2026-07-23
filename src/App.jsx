@@ -204,12 +204,28 @@ function MessageList(props) {
 
 function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, users }) {
   const [selected, setSelected] = useState(0);
+  const [remoteEmojis, setRemoteEmojis] = useState([]);
   const match = value.match(/:([a-z0-9_]{1,32})$/i);
   const query = match?.[1]?.toLowerCase();
   const mentionMatch = value.match(/@([a-z0-9_]{1,40})$/i);
   const mentionQuery = mentionMatch?.[1]?.toLowerCase();
+  useEffect(() => {
+    if (!query || query.length < 2 || !supabase) {
+      setRemoteEmojis([]);
+      return;
+    }
+    let cancelled = false;
+    supabase.from('emojis').select('*').ilike('name', `${query}%`).order('name').limit(8).then(({ data }) => {
+      if (!cancelled) setRemoteEmojis(data || []);
+    });
+    return () => { cancelled = true; };
+  }, [query]);
+
+  const emojiSuggestions = [...unicodeEmojiRows, ...emojis, ...remoteEmojis]
+    .filter((emoji, index, all) => emoji.name.startsWith(query || '') && all.findIndex((item) => item.name === emoji.name) === index)
+    .slice(0, 8);
   const suggestions = query
-    ? [...unicodeEmojiRows, ...emojis].filter((emoji) => emoji.name.startsWith(query)).slice(0, 8)
+    ? emojiSuggestions
     : mentionQuery
     ? users.filter((user) => mentionKey(user.display_name).startsWith(mentionQuery)).slice(0, 8)
     : [];
@@ -227,7 +243,7 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, us
       setSelected((current) => (current - 1 + suggestions.length) % suggestions.length);
     } else if (event.key === 'Enter' || event.key === 'Tab') {
       event.preventDefault();
-      completeEmoji(suggestions[selected].name);
+      completeEmoji(query ? suggestions[selected].name : mentionKey(suggestions[selected].display_name));
     } else if (event.key === 'Escape') {
       setSelected(0);
     }
