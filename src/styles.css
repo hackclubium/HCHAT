@@ -51,9 +51,11 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .sidebar nav p { margin: 0 8px 5px; color: #d8bfdc; font-size: .78rem; font-weight: 900; }
 .sidebar button { display: flex; align-items: center; justify-content: space-between; gap: 8px; overflow: hidden; width: 100%; color: #eadbea; background: transparent; text-align: left; white-space: nowrap; }
 .sidebar button span { overflow: hidden; text-overflow: ellipsis; }
+.sidebar button em { display: flex; gap: 4px; font-style: normal; }
 .sidebar button:hover { background: var(--side-hover); }
 .sidebar button.active { color: #fff; background: var(--active); }
 .sidebar b { min-width: 20px; border-radius: 999px; padding: 1px 6px; color: var(--side); background: #fff; font-size: .72rem; text-align: center; }
+.sidebar .ping-badge { color: #3f0e40; background: #fff0b8; }
 .sidebar i, .people-list i { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 999px; background: #2bac76; }
 .admin-button { margin: 16px 8px; width: calc(100% - 16px) !important; border: 1px solid #ffffff33; }
 
