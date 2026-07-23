@@ -42,7 +42,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .account { justify-self: end; display: flex; align-items: center; gap: 8px; max-width: 210px; overflow: hidden; color: #fff; background: transparent; white-space: nowrap; }
 .account span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 7px; background: linear-gradient(135deg, #36c5f0, #2eb67d); font-size: .72rem; }
 
-.workspace-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; background: #fff; }
+.workspace-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; overflow: hidden; background: #fff; }
 .sidebar { min-width: 0; overflow: auto; color: #f8eef9; background: var(--side); border-right: 1px solid #00000038; }
 .workspace { padding: 16px; border-bottom: 1px solid #ffffff1f; background: var(--side-dark); }
 .workspace strong, .workspace small { display: block; }
@@ -57,7 +57,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .sidebar i, .people-list i { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 999px; background: #2bac76; }
 .admin-button { margin: 16px 8px; width: calc(100% - 16px) !important; border: 1px solid #ffffff33; }
 
-.chat-shell { display: grid; grid-template-rows: 64px minmax(0, 1fr) auto; min-width: 0; background: #fff; }
+.chat-shell { display: grid; grid-template-rows: 64px minmax(0, 1fr) auto; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
 .channel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 0 22px; }
 .channel-header h2 { margin: 0; font-size: 1.08rem; }
 .channel-header p { margin: 3px 0 0; color: var(--muted); font-size: .88rem; }
@@ -66,7 +66,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .header-actions button { color: #454245; border: 1px solid var(--border); background: #fff; padding: 7px 10px; }
 .header-actions button:hover { background: #f7f7f7; }
 
-.message-list { overflow: auto; padding: 10px 0 20px; }
+.message-list { min-height: 0; overflow: auto; padding: 10px 0 20px; }
 .empty-state { margin: 64px auto; width: min(430px, calc(100% - 40px)); border: 1px solid #dad7dc; border-radius: 14px; padding: 26px; color: var(--muted); background: #fbfbfb; text-align: center; }
 .message { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 8px 24px; }
 .message:hover { background: #f7f7f7; }
@@ -95,7 +95,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .reactions button { padding: 3px 7px; color: var(--text); border: 1px solid #d8d8d8; background: #fff; font-size: .76rem; }
 .reactions button:hover { border-color: var(--active); background: #f7fbff; }
 .edit-form, .thread-composer { display: flex; gap: 8px; margin-top: 8px; }
-.thread-view { overflow: auto; padding: 12px 0 20px; }
+.thread-view { min-height: 0; overflow: auto; padding: 12px 0 20px; }
 .thread-view > button { margin: 0 24px 12px; color: var(--active); background: transparent; }
 
 .composer-wrap { position: relative; margin: 0 20px 20px; }
