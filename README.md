@@ -64,6 +64,16 @@ If you set up Supabase before HCA/invite removal, run:
 supabase/fix-existing-db.sql
 ```
 
+## Import Slack Emojis
+
+Needs a Slack token with `emoji:read` and Supabase service role key:
+
+```bash
+SLACK_BOT_TOKEN=xoxb-... SUPABASE_URL=https://... SUPABASE_SERVICE_ROLE_KEY=... npm run import:slack-emojis
+```
+
+Do not put service role key in frontend GitHub secrets.
+
 Skipped for MVP:
 
 - voice/video

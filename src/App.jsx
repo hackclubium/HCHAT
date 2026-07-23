@@ -5,6 +5,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const emojiPattern = /:([a-z0-9_]{2,32}):/g;
+const unicodeEmoji = {
+  skull: '💀', joy: '😂', sob: '😭', fire: '🔥', heart: '❤️', thumbs_up: '👍', thumbsup: '👍', thumbsdown: '👎', clap: '👏', pray: '🙏', eyes: '👀', rocket: '🚀', tada: '🎉', party: '🎉', wave: '👋', ok_hand: '👌', thinking: '🤔', scream: '😱', cool: '😎', smile: '😄', grin: '😁', angry: '😠', warning: '⚠️', check: '✅', x: '❌'
+};
 
 function initials(name = '?') {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
@@ -15,9 +18,9 @@ function messageText(body, emojis) {
   let lastIndex = 0;
   for (const match of body.matchAll(emojiPattern)) {
     const emoji = emojis.find((item) => item.name === match[1]);
-    if (!emoji) continue;
     parts.push(body.slice(lastIndex, match.index));
-    parts.push(<img className="emoji" src={emoji.image_url} alt={match[0]} title={match[0]} key={`${match.index}-${emoji.id}`} />);
+    if (emoji) parts.push(<img className="emoji" src={emoji.image_url} alt={match[0]} title={match[0]} key={`${match.index}-${emoji.id}`} />);
+    else parts.push(<span className="unicode-emoji" title={match[0]} key={match.index}>{unicodeEmoji[match[1]] || match[0]}</span>);
     lastIndex = match.index + match[0].length;
   }
   parts.push(body.slice(lastIndex));

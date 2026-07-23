@@ -85,6 +85,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .message-tools button:hover { background: #f0f0f0; }
 .danger-text { color: var(--danger) !important; }
 .emoji { width: 1.35em; height: 1.35em; vertical-align: -.25em; object-fit: contain; }
+.unicode-emoji { font-size: 1.25em; vertical-align: -.12em; }
 .attachment { display: inline-block; margin-top: 7px; color: var(--active); font-weight: 700; }
 .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .reactions button { padding: 3px 7px; color: var(--text); border: 1px solid #d8d8d8; background: #fff; font-size: .76rem; }
