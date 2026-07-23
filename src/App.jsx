@@ -27,6 +27,16 @@ function messageText(body, emojis) {
   return parts;
 }
 
+function emojiNode(name, emojis) {
+  const custom = emojis.find((item) => item.name === name);
+  if (custom) return <img className="emoji" src={custom.image_url} alt={`:${name}:`} title={`:${name}:`} />;
+  return <span className="unicode-emoji">{unicodeEmoji[name] || `:${name}:`}</span>;
+}
+
+function emojiNamesIn(text = '') {
+  return [...text.matchAll(emojiPattern)].map((match) => match[1]);
+}
+
 function time(value) {
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
@@ -135,9 +145,8 @@ function MessageRow({ item, previous, emojis, isStaff, session, editingId, editi
         {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
         <div className="reactions">
           {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
-            <button onClick={() => onReact(item, name)} key={name}>:{name}: {count}</button>
+            <button onClick={() => onReact(item, name)} key={name}>{emojiNode(name, emojis)} {count}</button>
           ))}
-          {emojis.slice(0, 5).map((emoji) => <button onClick={() => onReact(item, emoji.name)} key={emoji.id}>:{emoji.name}:</button>)}
         </div>
       </div>
     </article>
@@ -239,7 +248,7 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !session) return;
-    Promise.all([getOrCreateProfile(), supabase.from('channels').select('*').order('created_at'), supabase.from('emojis').select('*').order('name')]).then(([profileResult, channelResult, emojiResult]) => {
+    Promise.all([getOrCreateProfile(), supabase.from('channels').select('*').order('created_at'), supabase.from('emojis').select('*').order('name').limit(300)]).then(([profileResult, channelResult, emojiResult]) => {
       if (profileResult.error || channelResult.error || emojiResult.error) return setStatus(profileResult.error?.message || channelResult.error?.message || emojiResult.error?.message);
       setProfile(profileResult.data);
       setProfileName(profileResult.data.display_name || '');
@@ -278,13 +287,14 @@ export default function App() {
     return supabase.from('profiles').upsert({ id: session.user.id, email: session.user.email, display_name: fallbackName, approved: true }).select('*').single();
   }
   async function reloadChannels() { const { data, error } = await supabase.from('channels').select('*').order('created_at'); if (error) setStatus(error.message); else setChannels(data); }
-  async function reloadEmojis() { const { data, error } = await supabase.from('emojis').select('*').order('name'); if (error) setStatus(error.message); else setEmojis(data); }
+  async function reloadEmojis() { const { data, error } = await supabase.from('emojis').select('*').order('name').limit(300); if (error) setStatus(error.message); else setEmojis(data); }
+  async function loadEmojiNames(names) { const missing = [...new Set(names)].filter((name) => !unicodeEmoji[name] && !emojis.some((emoji) => emoji.name === name)); if (!missing.length) return; const { data, error } = await supabase.from('emojis').select('*').in('name', missing); if (!error && data?.length) setEmojis((current) => [...current, ...data.filter((item) => !current.some((emoji) => emoji.name === item.name))]); }
   async function reloadUsers(role = profile?.role) { const staff = role === 'mod' || role === 'admin'; const { data, error } = await supabase.from('profiles').select(staff ? 'id, email, display_name, role, moderation!moderation_user_id_fkey(banned, timeout_until, reason)' : 'id, display_name, role').eq('approved', true).order('display_name'); if (error) setStatus(error.message); else setUsers(data); }
   async function reloadAudit(role = profile?.role) { if (role !== 'mod' && role !== 'admin') return; const { data, error } = await supabase.from('audit_logs').select('*, profiles!audit_logs_actor_id_fkey(display_name)').order('created_at', { ascending: false }).limit(50); if (error) setStatus(error.message); else setAuditLogs(data); }
   async function reloadChannelMembers() { if (!channelId) return; const { data } = await supabase.from('channel_members').select('user_id').eq('channel_id', channelId); setChannelMembers((data || []).map((item) => item.user_id)); }
   async function reloadUnread(channelRows = channels) { const pairs = await Promise.all(channelRows.map(async (channel) => { const receipt = await supabase.from('read_receipts').select('last_read_at').eq('channel_id', channel.id).maybeSingle(); const since = receipt.data?.last_read_at || '1970-01-01T00:00:00Z'; const count = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('channel_id', channel.id).gt('created_at', since).is('parent_id', null); return [channel.id, count.count || 0]; })); setUnread(Object.fromEntries(pairs)); }
   async function reloadDms() { const { data, error } = await supabase.from('dm_conversations').select('id, created_at, dm_members!dm_members_conversation_id_fkey(profiles!dm_members_user_id_fkey(id, display_name))').order('created_at', { ascending: false }); if (error) setStatus(error.message); else setDms(data); }
-  async function loadMessages() { const { data, error } = await supabase.from('messages').select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles!messages_user_id_fkey(display_name, role), reactions(emoji_name, user_id)').eq('channel_id', channelId).is('parent_id', null).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(120); if (error) setStatus(error.message); else { setMessages(data.reverse()); await supabase.from('read_receipts').upsert({ channel_id: channelId, last_read_at: new Date().toISOString() }); setUnread((current) => ({ ...current, [channelId]: 0 })); } }
+  async function loadMessages() { const { data, error } = await supabase.from('messages').select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id, profiles!messages_user_id_fkey(display_name, role), reactions(emoji_name, user_id)').eq('channel_id', channelId).is('parent_id', null).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(120); if (error) setStatus(error.message); else { await loadEmojiNames(data.flatMap((item) => [...emojiNamesIn(item.body), ...(item.reactions || []).map((reaction) => reaction.emoji_name)])); setMessages(data.reverse()); await supabase.from('read_receipts').upsert({ channel_id: channelId, last_read_at: new Date().toISOString() }); setUnread((current) => ({ ...current, [channelId]: 0 })); } }
   async function loadDmMessages() { const { data, error } = await supabase.from('dm_messages').select('id, body, created_at, user_id, profiles!dm_messages_user_id_fkey(display_name)').eq('conversation_id', dmId).order('created_at').limit(120); if (error) setStatus(error.message); else setDmMessages(data); }
   async function signIn(event) { event.preventDefault(); setStatus('Opening Hack Club Auth...'); const { error } = await supabase.auth.signInWithOAuth({ provider: 'custom:hca', options: { redirectTo: location.origin + import.meta.env.BASE_URL } }); if (error) setStatus(error.message); }
   async function saveProfile(event) { event.preventDefault(); const name = profileName.trim(); if (name.length < 2) return setStatus('Display name too short.'); const { error } = await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id); if (error) setStatus(error.message); else { setProfile((current) => ({ ...current, display_name: name })); setProfileName(name); setStatus('Profile saved.'); reloadUsers(profile?.role); } }
