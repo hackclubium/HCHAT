@@ -187,8 +187,10 @@ function MessageRow({ item, previous, emojis, users, profile, isStaff, session, 
             <button>Save</button>
             <button type="button" onClick={onEditCancel}>Cancel</button>
           </form>
-        ) : <p>{messageText(item.body, emojis, users, profile)}</p>}
-        {item.attachment_url && <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>}
+        ) : item.attachment_type?.startsWith('image/') && item.body === item.attachment_name ? null : <p>{messageText(item.body, emojis, users, profile)}</p>}
+        {item.attachment_url && (item.attachment_type?.startsWith('image/')
+          ? <a className="image-attachment" href={item.attachment_url} target="_blank" rel="noreferrer"><img src={item.attachment_url} alt={item.attachment_name || 'Attached image'} loading="lazy" /></a>
+          : <a className="attachment" href={item.attachment_url} target="_blank" rel="noreferrer">{item.attachment_name || 'attachment'}</a>)}
         <div className="reactions">
           {Object.entries((item.reactions || []).reduce((acc, reaction) => ({ ...acc, [reaction.emoji_name]: (acc[reaction.emoji_name] || 0) + 1 }), {})).map(([name, count]) => (
             <button className={(item.reactions || []).some((reaction) => reaction.user_id === session.user.id && reaction.emoji_name === name) ? 'mine' : ''} onClick={() => onReact(item, name)} key={name}>{emojiNode(name, emojis)} {count}</button>
@@ -233,9 +235,11 @@ function MessageList(props) {
   return <div className="message-list" ref={scrollRef}>{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
 }
 
-function Composer({ dmId, value, setValue, onSubmit, onFile, onTyping, typingUsers, channel, emojis, users }) {
+function Composer({ dmId, value, setValue, onSubmit, file, onFile, onTyping, typingUsers, channel, emojis, users }) {
   const [selected, setSelected] = useState(0);
   const [remoteEmojis, setRemoteEmojis] = useState([]);
+  const [dragging, setDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
   const match = value.match(/:([a-z0-9_]{1,32})$/i);
   const query = match?.[1]?.toLowerCase();
   const mentionMatch = value.match(/@([a-z0-9_]{1,40})$/i);
@@ -261,6 +265,12 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, onTyping, typingUse
     ? users.filter((user) => mentionKey(user.display_name).startsWith(mentionQuery)).slice(0, 8)
     : [];
   useEffect(() => setSelected(0), [query, mentionQuery]);
+  useEffect(() => {
+    if (!file?.type.startsWith('image/')) return setPreviewUrl('');
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   function completeEmoji(name) {
     setValue(value.replace(query ? /:([a-z0-9_]{1,32})$/i : /@([a-z0-9_]{1,40})$/i, query ? `:${name}:` : `@${name} `));
   }
@@ -279,18 +289,32 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, onTyping, typingUse
       setSelected(0);
     }
   }
+  function takeFile(nextFile) {
+    if (nextFile && !dmId) onFile(nextFile);
+  }
+  function handleDrop(event) {
+    event.preventDefault();
+    setDragging(false);
+    takeFile(event.dataTransfer.files[0]);
+  }
+  function handlePaste(event) {
+    const image = [...event.clipboardData.files].find((item) => item.type.startsWith('image/'));
+    if (image) takeFile(image);
+  }
   return (
-    <div className="composer-wrap">
+    <div className={`composer-wrap ${dragging ? 'dragging' : ''}`} onDragEnter={(event) => { event.preventDefault(); if (!dmId) setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false); }} onDrop={handleDrop}>
       {suggestions.length > 0 && (
         <div className="autocomplete">
           {suggestions.map((item, index) => <button className={index === selected ? 'active' : ''} type="button" onMouseEnter={() => setSelected(index)} onClick={() => completeEmoji(query ? item.name : mentionKey(item.display_name))} key={query ? item.name : item.id}>{query ? emojiNode(item.name, emojis) : <span className="mini-avatar">{initials(item.display_name)}</span>} {query ? `:${item.name}:` : `@${item.display_name}`}</button>)}
         </div>
       )}
       <div className={`typing-indicator ${typingUsers.length ? 'visible' : ''}`}>{typingUsers.length ? `${typingUsers.slice(0, 2).join(', ')} ${typingUsers.length > 1 ? 'are' : 'is'} typing...` : '\u00a0'}</div>
+      {file && <div className="file-preview">{previewUrl ? <img src={previewUrl} alt="Upload preview" /> : <span>File</span>}<div><strong>{file.name}</strong><small>{(file.size / 1024 / 1024).toFixed(1)} MB</small></div><button type="button" onClick={() => onFile(null)} aria-label="Remove attachment">x</button></div>}
+      {dragging && <div className="drop-target">Drop image or file here</div>}
       <form className="composer" onSubmit={onSubmit}>
         <div className="composer-toolbar"><b>{dmId ? 'Direct message' : `Posting in #${channel?.name || 'channel'}`}</b><span><kbd>:</kbd> emoji <kbd>@</kbd> mention</span></div>
-        <input value={value} onChange={(event) => { setValue(event.target.value); onTyping(); }} onKeyDown={handleKeyDown} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
-        {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
+        <input value={value} onChange={(event) => { setValue(event.target.value); onTyping(); }} onKeyDown={handleKeyDown} onPaste={handlePaste} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
+        {!dmId && <label><input type="file" accept="image/*,.pdf,.txt,.zip" onChange={(event) => takeFile(event.target.files[0])} />Attach</label>}
         <button>Send</button>
       </form>
     </div>
@@ -441,8 +465,8 @@ export default function App() {
   async function loadDmMessages() { const { data, error } = await supabase.from('dm_messages').select('id, body, created_at, user_id, profiles!dm_messages_user_id_fkey(display_name)').eq('conversation_id', dmId).order('created_at').limit(120); if (error) setStatus(error.message); else setDmMessages(data); }
   async function signIn(event) { event.preventDefault(); setStatus('Opening Hack Club Auth...'); const { error } = await supabase.auth.signInWithOAuth({ provider: 'custom:hca', options: { redirectTo: location.origin + import.meta.env.BASE_URL } }); if (error) setStatus(error.message); }
   async function saveProfile(event) { event.preventDefault(); const name = profileName.trim(); if (name.length < 2) return setStatus('Display name too short.'); const { error } = await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id); if (error) setStatus(error.message); else { setProfile((current) => ({ ...current, display_name: name })); setProfileName(name); setStatus('Profile saved.'); reloadUsers(profile?.role); } }
-  async function uploadAttachment() { if (!attachmentFile) return {}; if (attachmentFile.size > 10 * 1024 * 1024) return { error: { message: 'Attachment max size is 10MB.' } }; const safeName = attachmentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_'); const path = `${crypto.randomUUID()}-${safeName}`; const upload = await supabase.storage.from('attachments').upload(path, attachmentFile); if (upload.error) return { error: upload.error }; const { data } = supabase.storage.from('attachments').getPublicUrl(path); setAttachmentFile(null); return { attachment_url: data.publicUrl, attachment_name: attachmentFile.name, attachment_type: attachmentFile.type }; }
-  async function sendMessage(event) { event.preventDefault(); const body = message.trim(); if (!body || !channelId) return; setMessage(''); const attachment = await uploadAttachment(); if (attachment.error) return setStatus(attachment.error.message); const { data, error } = await supabase.from('messages').insert({ channel_id: channelId, body, ...attachment }).select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id').single(); if (error) { setMessage(body); setStatus(error.message); } else setMessages((current) => [...current, { ...data, profiles: { display_name: profile?.display_name, role: profile?.role }, reactions: [] }]); }
+  async function uploadAttachment() { if (!attachmentFile) return {}; if (attachmentFile.size > 10 * 1024 * 1024) return { error: { message: 'Attachment max size is 10MB.' } }; const safeName = attachmentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_'); const path = `${crypto.randomUUID()}-${safeName}`; const upload = await supabase.storage.from('attachments').upload(path, attachmentFile); if (upload.error) return { error: upload.error }; const { data } = supabase.storage.from('attachments').getPublicUrl(path); return { attachment_url: data.publicUrl, attachment_name: attachmentFile.name, attachment_type: attachmentFile.type }; }
+  async function sendMessage(event) { event.preventDefault(); const body = message.trim() || attachmentFile?.name; if (!body || !channelId) return; setMessage(''); const attachment = await uploadAttachment(); if (attachment.error) { setMessage(message); return setStatus(attachment.error.message); } const { data, error } = await supabase.from('messages').insert({ channel_id: channelId, body, ...attachment }).select('id, body, attachment_url, attachment_name, attachment_type, pinned, edited_at, created_at, user_id').single(); if (error) { setMessage(message); setStatus(error.message); } else { setAttachmentFile(null); setMessages((current) => [...current, { ...data, profiles: { display_name: profile?.display_name, role: profile?.role }, reactions: [] }]); } }
   async function sendThreadMessage(event) { event.preventDefault(); const body = threadMessage.trim(); if (!body || !threadParent) return; setThreadMessage(''); const { data, error } = await supabase.from('messages').insert({ channel_id: channelId, parent_id: threadParent.id, body }).select('id, body, created_at, user_id').single(); if (error) { setThreadMessage(body); setStatus(error.message); } else setThreadParent((current) => ({ ...current, replies: [...(current.replies || []), { ...data, profiles: { display_name: profile?.display_name } }] })); }
   async function sendDm(event) { event.preventDefault(); const body = dmMessage.trim(); if (!body || !dmId) return; setDmMessage(''); const { data, error } = await supabase.from('dm_messages').insert({ conversation_id: dmId, body }).select('id, body, created_at, user_id').single(); if (error) { setDmMessage(body); setStatus(error.message); } else setDmMessages((current) => [...current, { ...data, profiles: { display_name: profile?.display_name } }]); }
   async function loadThread(parent) { const { data, error } = await supabase.from('messages').select('id, body, created_at, user_id, profiles!messages_user_id_fkey(display_name)').eq('parent_id', parent.id).order('created_at'); if (error) setStatus(error.message); else { setThreadParent({ ...parent, replies: data }); setDrawer(null); } }
@@ -472,7 +496,7 @@ export default function App() {
         <section className="chat-shell">
           <ChannelHeader dmId={dmId} channel={currentChannel} status={status} onDrawer={setDrawer} />
           <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} users={users} profile={profile} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} reactingTo={reactingTo} setReactingTo={setReactingTo} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
-          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} onTyping={sendTyping} typingUsers={typingUsers} channel={currentChannel} emojis={emojis} users={users} />
+          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} file={dmId ? null : attachmentFile} onFile={setAttachmentFile} onTyping={sendTyping} typingUsers={typingUsers} channel={currentChannel} emojis={emojis} users={users} />
         </section>
         {drawer && <button className="drawer-backdrop" onClick={() => setDrawer(null)} aria-label="Close drawer"></button>}
         <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />
