@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -185,13 +185,24 @@ function MessageRow({ item, previous, emojis, users, profile, isStaff, session, 
 
 function MessageList(props) {
   const { dmId, dmMessages, messages, threadParent, emojis, setThreadParent, sendThreadMessage, threadMessage, setThreadMessage } = props;
+  const scrollRef = useRef(null);
+  const scrollKey = dmId
+    ? dmMessages.map((item) => item.id).join(',')
+    : threadParent
+    ? [threadParent.id, ...(threadParent.replies || []).map((item) => item.id)].join(',')
+    : messages.map((item) => item.id).join(',');
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [scrollKey]);
+
   if (dmId) {
     if (!dmMessages.length) return <div className="empty-state">No messages here yet. Say hi.</div>;
-    return <div className="message-list">{dmMessages.map((item, index) => <MessageRow {...props} item={item} previous={dmMessages[index - 1]} key={item.id} />)}</div>;
+    return <div className="message-list" ref={scrollRef}>{dmMessages.map((item, index) => <MessageRow {...props} item={item} previous={dmMessages[index - 1]} key={item.id} />)}</div>;
   }
   if (threadParent) {
     return (
-      <div className="thread-view">
+      <div className="thread-view" ref={scrollRef}>
         <button onClick={() => setThreadParent(null)}>Close thread</button>
         <MessageRow {...props} item={threadParent} previous={null} />
         {(threadParent.replies || []).map((reply, index) => <MessageRow {...props} item={reply} previous={(threadParent.replies || [])[index - 1]} key={reply.id} />)}
@@ -203,7 +214,7 @@ function MessageList(props) {
     );
   }
   if (!messages.length) return <div className="empty-state">This channel is brand new. First post gets bragging rights.</div>;
-  return <div className="message-list">{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
+  return <div className="message-list" ref={scrollRef}>{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
 }
 
 function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis, users }) {
