@@ -8,6 +8,7 @@ const emojiPattern = /:([a-z0-9_]{2,32}):/g;
 const unicodeEmoji = {
   skull: '💀', joy: '😂', sob: '😭', fire: '🔥', heart: '❤️', thumbs_up: '👍', thumbsup: '👍', thumbsdown: '👎', clap: '👏', pray: '🙏', eyes: '👀', rocket: '🚀', tada: '🎉', party: '🎉', wave: '👋', ok_hand: '👌', thinking: '🤔', scream: '😱', cool: '😎', smile: '😄', grin: '😁', angry: '😠', warning: '⚠️', check: '✅', x: '❌'
 };
+const unicodeEmojiRows = Object.entries(unicodeEmoji).map(([name, symbol]) => ({ name, symbol }));
 
 function initials(name = '?') {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
@@ -121,25 +122,34 @@ function ChannelHeader({ dmId, channel, status, onDrawer }) {
   );
 }
 
-function MessageRow({ item, previous, emojis, isStaff, session, editingId, editingBody, setEditingBody, onEditStart, onEditSave, onEditCancel, onDelete, onPin, onThread, onReact }) {
+function EmojiChooser({ emojis, onPick }) {
+  return (
+    <div className="emoji-chooser">
+      {[...unicodeEmojiRows, ...emojis.slice(0, 80)].map((emoji) => (
+        <button onClick={() => onPick(emoji.name)} title={`:${emoji.name}:`} key={emoji.name}>
+          {'symbol' in emoji ? <span>{emoji.symbol}</span> : <img src={emoji.image_url} alt={`:${emoji.name}:`} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MessageRow({ item, previous, emojis, isStaff, session, editingId, editingBody, setEditingBody, reactingTo, setReactingTo, onEditStart, onEditSave, onEditCancel, onDelete, onPin, onThread, onReact }) {
   const grouped = shouldGroup(previous, item);
   const name = item.profiles?.display_name || 'unknown';
-  function addReaction() {
-    const name = window.prompt('React with emoji name, like skull or party_blob')?.trim().replace(/^:|:$/g, '').toLowerCase();
-    if (name) onReact(item, name);
-  }
   return (
     <article className={`message ${grouped ? 'grouped' : ''}`}>
       <div className="avatar">{grouped ? '' : initials(name)}</div>
       <div className="message-body">
         {!grouped && <div className="message-meta"><strong>{name}</strong><small>{time(item.created_at)}</small>{item.pinned && <em>pinned</em>}{item.edited_at && <em>edited</em>}</div>}
         <div className="message-tools">
-          <button onClick={addReaction}>React</button>
+          <button onClick={() => setReactingTo(reactingTo === item.id ? null : item.id)}>React</button>
           {isStaff && <button onClick={() => onPin(item)}>{item.pinned ? 'Unpin' : 'Pin'}</button>}
           <button onClick={() => onThread(item)}>Thread</button>
           {item.user_id === session.user.id && <button onClick={() => onEditStart(item)}>Edit</button>}
           {(item.user_id === session.user.id || isStaff) && <button className="danger-text" onClick={() => onDelete(item.id)}>Delete</button>}
         </div>
+        {reactingTo === item.id && <EmojiChooser emojis={emojis} onPick={(name) => { onReact(item, name); setReactingTo(null); }} />}
         {editingId === item.id ? (
           <form className="edit-form" onSubmit={onEditSave}>
             <input value={editingBody} onChange={(event) => setEditingBody(event.target.value)} maxLength="2000" />
@@ -181,14 +191,29 @@ function MessageList(props) {
   return <div className="message-list">{messages.map((item, index) => <MessageRow {...props} item={item} previous={messages[index - 1]} key={item.id} />)}</div>;
 }
 
-function Composer({ dmId, value, setValue, onSubmit, onFile, channel }) {
+function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis }) {
+  const match = value.match(/:([a-z0-9_]{1,32})$/i);
+  const query = match?.[1]?.toLowerCase();
+  const suggestions = query
+    ? [...unicodeEmojiRows, ...emojis].filter((emoji) => emoji.name.startsWith(query)).slice(0, 8)
+    : [];
+  function completeEmoji(name) {
+    setValue(value.replace(/:([a-z0-9_]{1,32})$/i, `:${name}:`));
+  }
   return (
-    <form className="composer" onSubmit={onSubmit}>
-      <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Use :emoji_name:</span></div>
-      <input value={value} onChange={(event) => setValue(event.target.value)} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
-      {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
-      <button>Send</button>
-    </form>
+    <div className="composer-wrap">
+      {suggestions.length > 0 && (
+        <div className="autocomplete">
+          {suggestions.map((emoji) => <button type="button" onClick={() => completeEmoji(emoji.name)} key={emoji.name}>{emojiNode(emoji.name, emojis)} :{emoji.name}:</button>)}
+        </div>
+      )}
+      <form className="composer" onSubmit={onSubmit}>
+        <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Type :skull: or :party_blob:</span></div>
+        <input value={value} onChange={(event) => setValue(event.target.value)} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
+        {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
+        <button>Send</button>
+      </form>
+    </div>
   );
 }
 
@@ -232,6 +257,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [drawer, setDrawer] = useState(null);
+  const [reactingTo, setReactingTo] = useState(null);
   const [newChannel, setNewChannel] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [newPrivate, setNewPrivate] = useState(false);
@@ -332,8 +358,8 @@ export default function App() {
         <Sidebar channels={channels} channelId={channelId} dms={dms} dmId={dmId} unread={unread} isStaff={isStaff} onChannel={(id) => { setChannelId(id); setDmId(null); setThreadParent(null); }} onDm={(id) => { setDmId(id); setThreadParent(null); }} onAdmin={() => setDrawer('admin')} />
         <section className="chat-shell">
           <ChannelHeader dmId={dmId} channel={currentChannel} status={status} onDrawer={setDrawer} />
-          <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
-          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} />
+          <MessageList dmId={dmId} dmMessages={dmMessages} messages={messages} threadParent={threadParent} emojis={emojis} setThreadParent={setThreadParent} sendThreadMessage={sendThreadMessage} threadMessage={threadMessage} setThreadMessage={setThreadMessage} isStaff={isStaff} session={session} editingId={editingId} editingBody={editingBody} setEditingBody={setEditingBody} reactingTo={reactingTo} setReactingTo={setReactingTo} onEditStart={(item) => { setEditingId(item.id); setEditingBody(item.body); }} onEditSave={saveEdit} onEditCancel={() => setEditingId(null)} onDelete={deleteMessage} onPin={togglePin} onThread={loadThread} onReact={react} />
+          <Composer dmId={dmId} value={dmId ? dmMessage : message} setValue={dmId ? setDmMessage : setMessage} onSubmit={dmId ? sendDm : sendMessage} onFile={setAttachmentFile} channel={currentChannel} emojis={emojis} />
         </section>
         {drawer && <button className="drawer-backdrop" onClick={() => setDrawer(null)} aria-label="Close drawer"></button>}
         <Drawer mode={drawer} close={() => setDrawer(null)} currentChannel={currentChannel} dmId={dmId} search={search} setSearch={setSearch} runSearch={runSearch} searchResults={searchResults} setChannelId={setChannelId} emojis={emojis} setMessage={setMessage} uploadEmoji={uploadEmoji} emojiName={emojiName} setEmojiName={setEmojiName} setEmojiFile={setEmojiFile} deleteEmoji={deleteEmoji} isStaff={isStaff} users={users} startDm={startDm} setModeration={setModeration} channelMembers={channelMembers} toggleChannelMember={toggleChannelMember} auditLogs={auditLogs} createChannel={createChannel} newChannel={newChannel} setNewChannel={setNewChannel} newTopic={newTopic} setNewTopic={setNewTopic} newPrivate={newPrivate} setNewPrivate={setNewPrivate} saveTopic={saveTopic} topic={topic} setTopic={setTopic} session={session} profile={profile} profileName={profileName} setProfileName={setProfileName} saveProfile={saveProfile} signOut={() => supabase.auth.signOut()} />
