@@ -192,24 +192,41 @@ function MessageList(props) {
 }
 
 function Composer({ dmId, value, setValue, onSubmit, onFile, channel, emojis }) {
+  const [selected, setSelected] = useState(0);
   const match = value.match(/:([a-z0-9_]{1,32})$/i);
   const query = match?.[1]?.toLowerCase();
   const suggestions = query
     ? [...unicodeEmojiRows, ...emojis].filter((emoji) => emoji.name.startsWith(query)).slice(0, 8)
     : [];
+  useEffect(() => setSelected(0), [query]);
   function completeEmoji(name) {
     setValue(value.replace(/:([a-z0-9_]{1,32})$/i, `:${name}:`));
+  }
+  function handleKeyDown(event) {
+    if (!suggestions.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelected((current) => (current + 1) % suggestions.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelected((current) => (current - 1 + suggestions.length) % suggestions.length);
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      completeEmoji(suggestions[selected].name);
+    } else if (event.key === 'Escape') {
+      setSelected(0);
+    }
   }
   return (
     <div className="composer-wrap">
       {suggestions.length > 0 && (
         <div className="autocomplete">
-          {suggestions.map((emoji) => <button type="button" onClick={() => completeEmoji(emoji.name)} key={emoji.name}>{emojiNode(emoji.name, emojis)} :{emoji.name}:</button>)}
+          {suggestions.map((emoji, index) => <button className={index === selected ? 'active' : ''} type="button" onMouseEnter={() => setSelected(index)} onClick={() => completeEmoji(emoji.name)} key={emoji.name}>{emojiNode(emoji.name, emojis)} :{emoji.name}:</button>)}
         </div>
       )}
       <form className="composer" onSubmit={onSubmit}>
         <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Type :skull: or :party_blob:</span></div>
-        <input value={value} onChange={(event) => setValue(event.target.value)} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
+        <input value={value} onChange={(event) => setValue(event.target.value)} onKeyDown={handleKeyDown} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
         {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
         <button>Send</button>
       </form>

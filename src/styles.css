@@ -109,7 +109,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .composer label input { display: none; }
 .autocomplete { position: absolute; left: 12px; bottom: calc(100% + 8px); z-index: 5; display: grid; width: min(320px, calc(100% - 24px)); max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 4px; background: #fff; box-shadow: 0 14px 40px #00000022; }
 .autocomplete button { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 9px; color: var(--text); background: transparent; text-align: left; }
-.autocomplete button:hover { background: #f7f7f7; }
+.autocomplete button:hover, .autocomplete button.active { background: #1264a3; color: #fff; }
 
 .drawer-backdrop { position: fixed; inset: 40px 0 0 0; z-index: 19; border: 0; border-radius: 0; background: #00000018; }
 .drawer { position: fixed; inset: 40px 0 0 auto; z-index: 20; width: min(380px, 100vw); overflow: auto; border-left: 1px solid var(--border); background: #f8f8f8; padding: 14px; box-shadow: -20px 0 50px #00000024; }
