@@ -78,14 +78,14 @@ function Login({ status, onSignIn }) {
   );
 }
 
-function TopBar({ profile, search, setSearch, onSearch, onAccount }) {
+function TopBar({ profile, search, setSearch, onSearch, onAccount, dark, onTheme }) {
   return (
     <header className="topbar">
       <strong><i></i>HCHAT</strong>
       <form onSubmit={onSearch}>
         <span>/</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search the clubhouse" />
       </form>
-      <button className="account" onClick={onAccount}><span>{initials(profile?.display_name)}</span>{profile?.display_name || 'You'}</button>
+      <div className="topbar-actions"><button className="theme-toggle" onClick={onTheme} title={`Use ${dark ? 'light' : 'dark'} mode`} aria-label={`Use ${dark ? 'light' : 'dark'} mode`}>{dark ? '☀' : '☾'}</button><button className="account" onClick={onAccount}><span>{initials(profile?.display_name)}</span>{profile?.display_name || 'You'}</button></div>
     </header>
   );
 }
@@ -314,6 +314,10 @@ function Drawer(props) {
 }
 
 export default function App() {
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('hchat-theme');
+    return saved ? saved === 'dark' : true;
+  });
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileName, setProfileName] = useState('');
@@ -353,6 +357,11 @@ export default function App() {
 
   const isStaff = profile?.role === 'mod' || profile?.role === 'admin';
   const currentChannel = channels.find((channel) => channel.id === channelId);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    localStorage.setItem('hchat-theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -457,7 +466,7 @@ export default function App() {
 
   return (
     <main className="shell">
-      <TopBar profile={profile} search={search} setSearch={setSearch} onSearch={runSearch} onAccount={() => setDrawer('profile')} />
+      <TopBar profile={profile} search={search} setSearch={setSearch} onSearch={runSearch} onAccount={() => setDrawer('profile')} dark={dark} onTheme={() => setDark((current) => !current)} />
       <section className="workspace-shell">
         <Sidebar channels={channels} channelId={channelId} dms={dms} dmId={dmId} unread={unread} mentions={mentions} isStaff={isStaff} onChannel={(id) => { setChannelId(id); setDmId(null); setThreadParent(null); }} onDm={(id) => { setDmId(id); setThreadParent(null); }} onAdmin={() => setDrawer('admin')} />
         <section className="chat-shell">
