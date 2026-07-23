@@ -38,7 +38,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .account { justify-self: end; display: flex; align-items: center; gap: 8px; max-width: 210px; overflow: hidden; color: #fff; background: transparent; white-space: nowrap; }
 .account span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 7px; background: linear-gradient(135deg, #36c5f0, #2eb67d); font-size: .72rem; }
 
-.workspace-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr) auto; min-height: 0; background: #fff; }
+.workspace-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; background: #fff; }
 .sidebar { min-width: 0; overflow: auto; color: #f8eef9; background: var(--side); border-right: 1px solid #00000038; }
 .workspace { padding: 16px; border-bottom: 1px solid #ffffff1f; background: var(--side-dark); }
 .workspace strong, .workspace small { display: block; }
@@ -96,7 +96,7 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 .composer label { display: grid; place-items: center; border-radius: 8px; padding: 0 12px; color: #454245; background: #f4f4f4; font-weight: 800; }
 .composer label input { display: none; }
 
-.drawer { width: 340px; min-width: 340px; overflow: auto; border-left: 1px solid var(--border); background: #f8f8f8; padding: 14px; }
+.drawer { position: fixed; inset: 40px 0 0 auto; z-index: 20; width: min(380px, 100vw); overflow: auto; border-left: 1px solid var(--border); background: #f8f8f8; padding: 14px; box-shadow: -20px 0 50px #00000024; }
 .drawer > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .drawer > header button { color: #454245; border: 1px solid var(--border); background: #fff; }
 .card, .result-list button, .people-list article { display: grid; gap: 4px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 11px; color: var(--text); background: #fff; text-align: left; }
@@ -118,7 +118,6 @@ button { border: 0; border-radius: 8px; padding: 9px 12px; color: #fff; backgrou
 
 @media (max-width: 1050px) {
   .workspace-shell { grid-template-columns: 240px minmax(0, 1fr); }
-  .drawer { position: fixed; inset: 40px 0 0 auto; z-index: 10; box-shadow: -16px 0 40px #00000020; }
 }
 
 @media (max-width: 720px) {
