@@ -124,12 +124,17 @@ function ChannelHeader({ dmId, channel, status, onDrawer }) {
 function MessageRow({ item, previous, emojis, isStaff, session, editingId, editingBody, setEditingBody, onEditStart, onEditSave, onEditCancel, onDelete, onPin, onThread, onReact }) {
   const grouped = shouldGroup(previous, item);
   const name = item.profiles?.display_name || 'unknown';
+  function addReaction() {
+    const name = window.prompt('React with emoji name, like skull or party_blob')?.trim().replace(/^:|:$/g, '').toLowerCase();
+    if (name) onReact(item, name);
+  }
   return (
     <article className={`message ${grouped ? 'grouped' : ''}`}>
       <div className="avatar">{grouped ? '' : initials(name)}</div>
       <div className="message-body">
         {!grouped && <div className="message-meta"><strong>{name}</strong><small>{time(item.created_at)}</small>{item.pinned && <em>pinned</em>}{item.edited_at && <em>edited</em>}</div>}
         <div className="message-tools">
+          <button onClick={addReaction}>React</button>
           {isStaff && <button onClick={() => onPin(item)}>{item.pinned ? 'Unpin' : 'Pin'}</button>}
           <button onClick={() => onThread(item)}>Thread</button>
           {item.user_id === session.user.id && <button onClick={() => onEditStart(item)}>Edit</button>}
