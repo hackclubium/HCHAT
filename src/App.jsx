@@ -81,9 +81,9 @@ function Login({ status, onSignIn }) {
 function TopBar({ profile, search, setSearch, onSearch, onAccount }) {
   return (
     <header className="topbar">
-      <strong>HCHAT</strong>
+      <strong><i></i>HCHAT</strong>
       <form onSubmit={onSearch}>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search messages" />
+        <span>/</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search the clubhouse" />
       </form>
       <button className="account" onClick={onAccount}><span>{initials(profile?.display_name)}</span>{profile?.display_name || 'You'}</button>
     </header>
@@ -94,14 +94,13 @@ function Sidebar({ channels, channelId, dms, dmId, unread, mentions, isStaff, on
   return (
     <aside className="sidebar">
       <div className="workspace">
-        <strong>HCHAT</strong>
-        <small>Hack Club</small>
+        <span>HC</span><div><strong>HCHAT</strong><small>Hack Club clubhouse</small></div>
       </div>
       <nav>
         <p>Channels</p>
         {channels.map((channel) => (
           <button className={channel.id === channelId && !dmId ? 'active' : ''} onClick={() => onChannel(channel.id)} key={channel.id}>
-            <span># {channel.name}{channel.private ? ' private' : ''}</span>
+            <span><i className="channel-mark">#</i>{channel.name}{channel.private ? <small>lock</small> : ''}</span>
             <em>{mentions[channel.id] ? <b className="ping-badge">@{mentions[channel.id]}</b> : null}{unread[channel.id] ? <b>{unread[channel.id]}</b> : null}</em>
           </button>
         ))}
@@ -114,7 +113,7 @@ function Sidebar({ channels, channelId, dms, dmId, unread, mentions, isStaff, on
           </button>
         ))}
       </nav>
-      {isStaff && <button className="admin-button" onClick={onAdmin}>Admin</button>}
+        {isStaff && <button className="admin-button" onClick={onAdmin}>Control room <span>↗</span></button>}
     </aside>
   );
 }
@@ -128,10 +127,10 @@ function ChannelHeader({ dmId, channel, status, onDrawer }) {
       </div>
       <div className="header-actions">
         {status && <span>{status}</span>}
-        <button onClick={() => onDrawer('search')}>Find</button>
-        <button onClick={() => onDrawer('people')}>Members</button>
-        <button onClick={() => onDrawer('emoji')}>Emoji</button>
-        <button onClick={() => onDrawer('details')}>Info</button>
+        <button onClick={() => onDrawer('search')} title="Find messages">⌕ <span>Find</span></button>
+        <button onClick={() => onDrawer('people')} title="Members">◎ <span>People</span></button>
+        <button onClick={() => onDrawer('emoji')} title="Emoji">☺ <span>Emoji</span></button>
+        <button onClick={() => onDrawer('details')} title="Channel info">ⓘ</button>
       </div>
     </section>
   );
@@ -175,9 +174,9 @@ function MessageRow({ item, previous, emojis, users, profile, isStaff, session, 
       <div className="message-body">
         {!grouped && <div className="message-meta"><strong>{name}</strong><small>{time(item.created_at)}</small>{item.pinned && <em>pinned</em>}{item.edited_at && <em>edited</em>}</div>}
         <div className="message-tools">
-          <button onClick={() => setReactingTo(reactingTo === item.id ? null : item.id)}>React</button>
+          <button onClick={() => setReactingTo(reactingTo === item.id ? null : item.id)} title="React">☺</button>
           {isStaff && <button onClick={() => onPin(item)}>{item.pinned ? 'Unpin' : 'Pin'}</button>}
-          <button onClick={() => onThread(item)}>Thread</button>
+          <button onClick={() => onThread(item)} title="Open thread">Reply</button>
           {item.user_id === session.user.id && <button onClick={() => onEditStart(item)}>Edit</button>}
           {(item.user_id === session.user.id || isStaff) && <button className="danger-text" onClick={() => onDelete(item.id)}>Delete</button>}
         </div>
@@ -289,7 +288,7 @@ function Composer({ dmId, value, setValue, onSubmit, onFile, onTyping, typingUse
       )}
       <div className={`typing-indicator ${typingUsers.length ? 'visible' : ''}`}>{typingUsers.length ? `${typingUsers.slice(0, 2).join(', ')} ${typingUsers.length > 1 ? 'are' : 'is'} typing...` : '\u00a0'}</div>
       <form className="composer" onSubmit={onSubmit}>
-        <div className="composer-toolbar"><b>{dmId ? 'DM' : `#${channel?.name || 'channel'}`}</b><span>Type :skull: or :party_blob:</span></div>
+        <div className="composer-toolbar"><b>{dmId ? 'Direct message' : `Posting in #${channel?.name || 'channel'}`}</b><span><kbd>:</kbd> emoji <kbd>@</kbd> mention</span></div>
         <input value={value} onChange={(event) => { setValue(event.target.value); onTyping(); }} onKeyDown={handleKeyDown} placeholder={dmId ? 'Message this person' : `Message #${channel?.name || 'channel'}`} maxLength="2000" />
         {!dmId && <label><input type="file" onChange={(event) => onFile(event.target.files[0])} />Attach</label>}
         <button>Send</button>
