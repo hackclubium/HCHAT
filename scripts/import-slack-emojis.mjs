@@ -35,7 +35,12 @@ if (!createdBy) {
 
 const rows = Object.entries(payload.emoji)
   .filter(([, url]) => typeof url === 'string' && !url.startsWith('alias:'))
-  .map(([name, image_url]) => ({ name: name.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 32), image_url, created_by: createdBy }));
+  .map(([name, image_url]) => ({
+    name: name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 32),
+    image_url,
+    created_by: createdBy,
+  }))
+  .filter((emoji) => /^[a-z0-9_]{2,32}$/.test(emoji.name));
 
 for (let index = 0; index < rows.length; index += 500) {
   const batch = rows.slice(index, index + 500);
